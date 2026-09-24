@@ -46,6 +46,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.3" date="2026-09-24">
+      <description>
+        <p>New media widgets work with any player without extra packages: they read players directly over D-Bus instead of relying on playerctl. Generated widgets also avoid other tools that are often missing.</p>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-09-24">
       <description>
         <p>Fixes widgets with shadows, rounded cards or animations not being drawn in the Flatpak.</p>

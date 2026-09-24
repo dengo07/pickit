@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-24
+
+### Changed
+- Generated widgets no longer depend on optional tools such as `playerctl`. Media widgets read players directly over D-Bus (MPRIS), which works on every desktop without extra packages.
+
 ## [1.0.2] - 2026-09-24
 
 ### Fixed
@@ -32,7 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/dengo07/pickit/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/dengo07/pickit/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/dengo07/pickit/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dengo07/pickit/releases/tag/v1.0.0
