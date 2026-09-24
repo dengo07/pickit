@@ -44,6 +44,7 @@ jobs:
       # so everything is signed with the key in the FLATPAK_GPG_PRIVATE_KEY secret; its
       # public half is packaging/flatpak/pickit.gpg (also embedded in the site files).
       - name: Sign the Flatpak repository
+        shell: bash
         env:
           FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
         run: |
@@ -59,7 +60,22 @@ jobs:
           gpg --version | head -1
           # Containers have no session agent; start one so secret keys can be imported.
           gpgconf --launch gpg-agent
-          printf '%s\n' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --pinentry-mode loopback --passphrase '' --import
+          # Accept the ASCII-armored block or a single-line base64 encoding of it (safer to
+          # paste), and tolerate Windows line endings and indentation added while pasting.
+          KEYFILE="$GNUPGHOME/key.asc"
+          printf '%s\n' "$FLATPAK_GPG_PRIVATE_KEY" | tr -d '\r' | sed 's/^[[:space:]]*//' > "$KEYFILE"
+          if ! grep -q -- '-----BEGIN PGP PRIVATE KEY BLOCK-----' "$KEYFILE"; then
+            tr -d '[:space:]' < "$KEYFILE" | base64 -d > "$KEYFILE.dec" 2>/dev/null || true
+            mv "$KEYFILE.dec" "$KEYFILE"
+          fi
+          if ! grep -q -- '-----BEGIN PGP PRIVATE KEY BLOCK-----' "$KEYFILE" \
+             || ! grep -q -- '-----END PGP PRIVATE KEY BLOCK-----' "$KEYFILE"; then
+            echo "::error::FLATPAK_GPG_PRIVATE_KEY is not a complete private key ($(wc -l < "$KEYFILE") lines;\
+           BEGIN marker: $(grep -c -- '-----BEGIN PGP PRIVATE' "$KEYFILE"), END marker: $(grep -c -- '-----END PGP PRIVATE' "$KEYFILE")).\
+           Paste the single line printed by: base64 -w0 private-key.asc (see docs/PACKAGING.md)."
+            exit 1
+          fi
+          gpg --batch --pinentry-mode loopback --passphrase '' --import "$KEYFILE"
           FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
           if [ -z "$FPR" ]; then
             echo "::error::No secret key found in FLATPAK_GPG_PRIVATE_KEY. Paste the whole ASCII-armored block."

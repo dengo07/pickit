@@ -12,7 +12,11 @@ Do this before the first release:
 
 1. **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**.
 2. **Settings → Environments → `github-pages` → Deployment branches and tags:** add a rule of type **Tag** with the pattern `v*`. By default only `main` may deploy, and releases deploy from a tag.
-3. **Settings → Secrets and variables → Actions → New repository secret:** name it `FLATPAK_GPG_PRIVATE_KEY`, and paste the complete ASCII-armored private signing key as the value (`-----BEGIN PGP PRIVATE KEY BLOCK-----` … `END`).
+3. **Settings → Secrets and variables → Actions → New repository secret:** name it `FLATPAK_GPG_PRIVATE_KEY`. As the value, paste the private signing key encoded as a single line, which survives copy and paste intact:
+   ```bash
+   base64 -w0 ~/.local/share/pickit-release-key/private-key.asc | xclip -selection clipboard
+   ```
+   The plain ASCII-armored block (`-----BEGIN PGP PRIVATE KEY BLOCK-----` … `END`) is accepted too.
 
 ## Why a Flatpak repository
 
