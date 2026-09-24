@@ -1,0 +1,43 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Pickit?
+      options: [Flatpak, AppImage, From source]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Pickit version
+      description: Output of `pickit --version` (or `flatpak run io.github.dengobey.Pickit --version`)
+  - type: input
+    id: system
+    attributes:
+      label: Distro, desktop and session
+      placeholder: "Linux Mint 22.3, Cinnamon, x11"
+      description: Tip — `echo $XDG_SESSION_TYPE` shows x11 or wayland.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Daemon log
+      description: The last lines of `~/.local/share/pickit/daemon.log`
+      render: text
+  - type: textarea
+    id: widget
+    attributes:
+      label: Widget files (if it's about one widget)
+      description: Contents of `widget.json` (and `index.html` if relevant) from `~/.local/share/pickit/widgets/<id>/`. Remove anything private.
+      render: json

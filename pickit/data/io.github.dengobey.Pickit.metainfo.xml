@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.dengobey.Pickit</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Pickit</name>
+  <summary>Create desktop widgets by describing them</summary>
+  <developer id="io.github.dengobey">
+    <name>Deniz Ural</name>
+  </developer>
+  <description>
+    <p>
+      Describe a widget in plain language, such as a clock, system meters, weather or a
+      now-playing panel. Pickit uses Claude to build it and pins it to your desktop.
+    </p>
+    <ul>
+      <li>Widgets sit on the desktop below your windows, on every workspace</li>
+      <li>They stay after you close the app and come back after a reboot</li>
+      <li>Refine any widget by asking for changes, such as "make it bigger and blue"</li>
+      <li>Live data comes from shell commands that you review and approve first</li>
+      <li>Works with your Claude Code login or an Anthropic API key</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.dengobey.Pickit.desktop</launchable>
+  <url type="homepage">https://github.com/dengobey/pickit</url>
+  <url type="bugtracker">https://github.com/dengobey/pickit/issues</url>
+  <url type="vcs-browser">https://github.com/dengobey/pickit</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Editing a widget with a live preview</caption>
+      <image>https://raw.githubusercontent.com/dengobey/pickit/main/docs/screenshots/maker.png</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <provides>
+    <binary>pickit</binary>
+  </provides>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-09-24">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

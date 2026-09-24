@@ -1,0 +1,33 @@
+name: Compatibility report
+description: Tell us how Pickit behaves on your desktop (working reports are welcome too!)
+labels: [compatibility]
+body:
+  - type: input
+    id: system
+    attributes:
+      label: Distro, desktop and session
+      placeholder: "Fedora 42, KDE Plasma 6, wayland"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Package
+      options: [Flatpak, AppImage, From source]
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: What works?
+      options:
+        - label: Widgets appear with a transparent background
+        - label: Widgets stay below normal windows (also after clicking them)
+        - label: Widgets stay visible with Show Desktop
+        - label: Widgets appear on all workspaces
+        - label: Alt+drag moves widgets
+        - label: Widgets come back after logging out and in
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

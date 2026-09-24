@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an idea for Pickit
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the problem or the widget you couldn't make.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Pickit help?
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else? (mockups, examples, similar tools)

@@ -1,0 +1,49 @@
+app-id: io.github.dengobey.Pickit
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: pickit
+finish-args:
+  # X11 only (XWayland on Wayland desktops): widgets need keep-below / sticky / dock hints.
+  - --socket=x11
+  - --share=ipc
+  - --device=dri
+  # Anthropic API, CDN fonts/libraries used by generated widgets.
+  - --share=network
+  # Widgets' approved shell commands and the Claude Code CLI run on the host
+  # (via flatpak-spawn --host); the desktop daemon is started the same way.
+  - --talk-name=org.freedesktop.Flatpak
+  # Start the desktop daemon at login so widgets survive reboots.
+  - --filesystem=xdg-config/autostart:create
+  # Widgets and settings live in the normal locations, shared with the AppImage/source versions.
+  - --filesystem=xdg-data/pickit:create
+  - --filesystem=xdg-config/pickit:create
+modules:
+  - python-deps.json
+
+  - name: pickit
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/pickit
+      - cp -r pickit /app/share/pickit/
+      - install -Dm755 pickit.sh /app/bin/pickit
+      - install -Dm644 pickit/data/io.github.dengobey.Pickit.desktop -t /app/share/applications
+      - install -Dm644 pickit/data/io.github.dengobey.Pickit.svg -t /app/share/icons/hicolor/scalable/apps
+      - install -Dm644 pickit/data/io.github.dengobey.Pickit.metainfo.xml -t /app/share/metainfo
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - build
+          - dist
+          - packaging
+          - docs
+          - tests
+          - .git
+          - .github
+          - .flatpak-builder
+      - type: script
+        dest-filename: pickit.sh
+        commands:
+          - export PYTHONPATH=/app/share/pickit${PYTHONPATH:+:$PYTHONPATH}
+          - exec python3 -m pickit "$@"

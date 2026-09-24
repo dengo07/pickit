@@ -1,0 +1,28 @@
+#!/bin/sh
+# Entry point of the Pickit AppImage: point Python, GTK and WebKit at the bundle.
+HERE="$(dirname "$(readlink -f "$0")")"
+APPDIR="${APPDIR:-$HERE}"
+U="$APPDIR/usr"
+L="$U/lib/x86_64-linux-gnu"
+
+export LD_LIBRARY_PATH="$L${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export PYTHONHOME="$U" PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1
+export PYTHONPATH="$U/share/pickit:$U/lib/python3/dist-packages"
+export GI_TYPELIB_PATH="$L/girepository-1.0"
+export GIO_MODULE_DIR="$L/gio/modules"
+export GSETTINGS_SCHEMA_DIR="$U/share/glib-2.0/schemas"
+export WEBKIT_INJECTED_BUNDLE_PATH="$L/webkit2gtk-4.1/injected-bundle"
+export XDG_DATA_DIRS_ORIG="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export XDG_DATA_DIRS="$U/share:$XDG_DATA_DIRS_ORIG"
+# Host GTK modules and GStreamer plugins were built against the host's libraries.
+unset GTK_MODULES GTK3_MODULES
+export GST_PLUGIN_SYSTEM_PATH_1_0="" GST_PLUGIN_PATH_1_0=""
+
+cache_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+cache="$cache_dir/pickit-pixbuf-loaders-$(id -u).cache"
+sed "s|@APPDIR@|$APPDIR|g" "$L/gdk-pixbuf-2.0/2.10.0/loaders.cache.in" > "$cache"
+export GDK_PIXBUF_MODULE_FILE="$cache"
+
+# WebKit finds its helper processes relative to this directory (see build-appimage.sh).
+cd "$U" || exit 1
+exec "$U/bin/python3" -s -m pickit "$@"

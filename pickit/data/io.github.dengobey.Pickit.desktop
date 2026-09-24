@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Pickit
+Comment=Describe a desktop widget in plain language and get it on your desktop
+Exec=pickit
+Icon=io.github.dengobey.Pickit
+Terminal=false
+Categories=Utility;GTK;
+Keywords=widget;desktop;desklet;conky;AI;
+StartupWMClass=pickit
