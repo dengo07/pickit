@@ -31,13 +31,5 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1 xvfb
-      - name: Import every module and build the maker window
-        run: |
-          xvfb-run -a python3 - <<'PY'
-          import os
-          os.environ.setdefault("GDK_BACKEND", "x11")
-          import pickit.app, pickit.daemon, pickit.widget_window
-          from pickit.widget_window import WidgetView
-          WidgetView()
-          print("ok")
-          PY
+      - name: Build every native example and check WebKit stays unloaded
+        run: xvfb-run -a python3 tests/gtk_smoke.py

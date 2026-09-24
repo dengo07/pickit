@@ -5,7 +5,7 @@ SPEC = {"name": "CPU Meter", "width": 200, "height": 100, "position": "center",
 def test_save_and_roundtrip(store):
     manifest = store.save_spec(SPEC, approved=True, prompt="cpu please")
     assert manifest["id"].startswith("cpu-meter-")
-    assert store.to_spec(store.load(manifest["id"])) == SPEC
+    assert store.to_spec(store.load(manifest["id"])) == {**SPEC, "engine": "html"}
     assert store.load(manifest["id"])["history"] == ["cpu please"]
     assert [m["id"] for m in store.list_widgets()] == [manifest["id"]]
 
@@ -39,3 +39,19 @@ def test_changes_touch_the_stamp_and_delete_removes(store):
     store.delete(manifest["id"])
     assert store.STAMP.read_text() != first
     assert store.list_widgets() == []
+
+
+NATIVE = {"name": "Clock", "engine": "native", "width": 200, "height": 80, "position": "center", "commands": {},
+          "ui": {"type": "label", "text": "{now|time:%H:%M}"}}
+
+
+def test_native_roundtrip_and_engine_switch(store):
+    manifest = store.save_spec(NATIVE)
+    assert manifest["engine"] == "native"
+    assert store.ui_path(manifest["id"]).exists() and not store.html_path(manifest["id"]).exists()
+    assert store.to_spec(store.load(manifest["id"])) == NATIVE
+    before = store.signature(store.load(manifest["id"]))
+    # Converting to html replaces the content file, so nothing stale is left behind.
+    store.save_spec({**SPEC, "engine": "html"}, widget_id=manifest["id"])
+    assert store.html_path(manifest["id"]).exists() and not store.ui_path(manifest["id"]).exists()
+    assert store.signature(store.load(manifest["id"])) != before

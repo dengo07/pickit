@@ -33,7 +33,7 @@ class TestExtractJson:
 
 class TestValidate:
     def test_keeps_valid_spec(self):
-        assert generator.validate(spec()) == spec()
+        assert generator.validate(spec()) == {**spec(), "engine": "html"}
 
     def test_clamps_size(self):
         out = generator.validate(spec(width=5, height=99999))
@@ -77,3 +77,14 @@ def test_generate_sends_current_widget_when_refining():
     generator.generate(backend, "make it blue", current=spec())
     prompt = backend.calls[0][0]["content"]
     assert "CURRENT WIDGET JSON" in prompt and "make it blue" in prompt
+    assert "keep html unless" in prompt  # refining in auto mode keeps the engine
+
+
+def test_generate_passes_the_engine_and_repairs_native_errors():
+    native = {"name": "Clock", "engine": "native", "width": 200, "height": 80, "commands": {},
+              "ui": {"type": "label", "text": "{now|time:%H:%M}"}}
+    broken = dict(native, ui={"type": "label", "colour": "red"})
+    backend = FakeBackend(json.dumps(broken), json.dumps(native))
+    assert generator.generate(backend, "a clock", engine="native")["ui"]["type"] == "label"
+    assert backend.calls[0][0]["content"].startswith("Engine: native")
+    assert 'unknown property "colour"' in backend.calls[1][-1]["content"]

@@ -1,0 +1,34 @@
+{
+ "name": "Big Clock",
+ "engine": "native",
+ "width": 420,
+ "height": 170,
+ "position": "top-left",
+ "commands": {},
+ "ui": {
+  "type": "column",
+  "halign": "center",
+  "valign": "center",
+  "spacing": 2,
+  "children": [
+   {
+    "type": "label",
+    "text": "{now|time:%H:%M}",
+    "size": 96,
+    "weight": "light",
+    "color": "#ffffff",
+    "align": "center",
+    "text_shadow": true
+   },
+   {
+    "type": "label",
+    "text": "{now|time:%A, %d %B|upper}",
+    "size": 15,
+    "letter_spacing": 3,
+    "color": "rgba(255,255,255,0.85)",
+    "align": "center",
+    "text_shadow": true
+   }
+  ]
+ }
+}

@@ -15,7 +15,7 @@ HOLD = textwrap.dedent("""
 
 
 def run(tmp_path, seconds):
-    env = {"XDG_DATA_HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "PYTHONPATH": "."}
+    env = {"PICKIT_DATA_HOME": str(tmp_path / "pickit-data"), "PATH": "/usr/bin:/bin", "PYTHONPATH": "."}
     return subprocess.Popen([sys.executable, "-c", HOLD, str(seconds)], stdout=subprocess.PIPE,
                             text=True, env=env)
 

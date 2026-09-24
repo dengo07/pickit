@@ -27,7 +27,8 @@ Pickit uses Claude to turn your description into a working widget, then pins it 
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.
 - **Live data, with approval.** Widgets get data from shell commands that **you approve before they run**. Change a command and Pickit asks again.
 - **No setup.** Download a Flatpak or AppImage; there are no libraries to install. Pickit uses your [Claude Code](https://claude.com/claude-code) login if you have one, or an Anthropic API key.
-- **Hackable.** Every widget is a plain HTML file you can open and edit yourself.
+- **Light on memory.** Most widgets are drawn natively with GTK: five typical widgets use about 25 MB in total. When a design needs more freedom (animation, SVG art), Pickit switches to HTML/CSS for that widget.
+- **Hackable.** Every widget is a small JSON or HTML file you can open and edit yourself.
 
 ## Install
 
@@ -97,7 +98,7 @@ For the Flatpak, use `flatpak run io.github.dengo07.Pickit <command>`.
 flowchart LR
   you([Your description]) --> maker[Pickit window]
   maker -- prompt --> claude[(Claude)]
-  claude -- "HTML + manifest" --> maker
+  claude -- "widget spec (native UI or HTML)" --> maker
   maker -- "saves widget files" --> store[("~/.local/share/pickit")]
   store -- "file watch" --> daemon[Desktop daemon]
   daemon --> w1[Widget window]
@@ -105,7 +106,7 @@ flowchart LR
   w1 -. "approved commands" .-> host[(Your system)]
 ```
 
-- Each widget is an HTML/CSS/JS page with a small manifest. It runs in a transparent WebKit window that the window manager keeps in the desktop layer.
+- Each widget uses one of two engines. **Native** widgets are a JSON component tree (cards, labels, rings, bars, images, buttons, with data bindings) that Pickit draws with GTK. **HTML** widgets are a web page drawn by WebKit, for designs native can't express. Either way the widget sits in a transparent window that the window manager keeps in the desktop layer.
 - A separate **desktop daemon** owns the widget windows. It starts at login and picks up changes as soon as you save them, which is why widgets survive closing the app.
 - Widgets can only run the shell commands listed in their manifest, and only after you approve them. See [SECURITY.md](SECURITY.md).
 

@@ -32,7 +32,11 @@ sequenceDiagram
 | `__main__.py` | CLI entry. Routes `run`/`stop` to the daemon and everything else to the maker. Sets `GDK_BACKEND=x11` and `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1`. |
 | `app.py` | Maker window: prompt, examples, generation thread, preview, approval, settings. |
 | `daemon.py` | Desktop daemon: watches the store and reconciles windows; handles the widget context-menu actions. |
-| `widget_window.py` | `WidgetView` (WebKit view with the JS bridge) and `WidgetWindow` (the desktop window: dock type, keep-below, sticky, transparency, manual drag, context menu, position saving). |
+| `widget_window.py` | `WidgetWindow`, the desktop window shared by both engines: dock type, keep-below, sticky, transparency, manual drag, context menu, position saving. `make_view()` creates the engine's view with a lazy import. |
+| `native/spec.py` | The native component vocabulary and its validator: a strict property whitelist per component, safe CSS values, precise error paths. |
+| `native/data.py` | Data binding: command output parsing, templates, filters, conditions and choices, all in a small interpreter with no `eval`. |
+| `native/render.py`, `native/draw.py` | `NativeView`: builds GTK widgets from the tree, turns data-dependent properties into bindings that update only when their inputs change, and draws rings, bars, sparklines and rounded images with Cairo. |
+| `html_view.py` | `WidgetView`: the HTML engine's WebKit view, with the JS bridge, a shared web process, crash reload and watchdog. Only imported when an HTML widget exists. |
 | `bridge.py` | The `window.widget` JS API and `CommandRunner`, which runs approved commands on their intervals in threads. |
 | `generator.py` | Builds the prompt, extracts and validates the JSON spec, and retries once with the error fed back. |
 | `backends.py` | `ClaudeCLIBackend` (`claude -p --output-format json --tools ""`) and `AnthropicBackend` (Python SDK, streaming, adaptive thinking). |
@@ -40,9 +44,11 @@ sequenceDiagram
 | `runtime.py` | Detects source, Flatpak or AppImage; handles host command wrapping (`flatpak-spawn --host`), self-launching and locating the Claude CLI. |
 | `autostart.py` | Launches the daemon detached, writes the XDG autostart entry, and adds the AppImage's menu entry. |
 | `config.py` | `~/.config/pickit/config.json`. |
-| `prompts/system.md` | The system prompt: the widget contract, the bridge API and design rules. |
+| `prompts/system.md`, `prompts/native_examples/` | The system prompt: engine choice, the native component reference, the HTML contract, command and design rules, plus complete native examples. |
 
 ## Key decisions
+
+**Two engines, native first.** WebKit costs about 50–150 MB per page process, while the same widgets drawn with GTK cost a few MB. So the AI describes most widgets as a declarative component tree (`ui.json`) that Pickit renders natively, and falls back to HTML only for designs the components can't express. Measured with five typical widgets (clock, battery ring, meters, weather, media): **24 MB** as native widgets (27 MB in the Flatpak), versus 180–244 MB for four HTML widgets. A declarative tree was chosen over having the AI write GTK code, because generated code would run with the user's full permissions, while a tree is data: it's validated against a whitelist and rendered by trusted code, and only approved commands ever run. WebKit is imported lazily, so a native-only desktop never loads it; mixing in one HTML widget brings its cost back.
 
 **Dock window type plus keep-below.** On EWMH window managers this puts a window in the "bottom" layer: above the desktop background and icons, below every normal window. Show Desktop doesn't hide it, and clicking it never raises it. A `DESKTOP`-type window was rejected because it gets buried under Nemo, Nautilus or Caja's desktop window as soon as the desktop is clicked. The trade-off: window managers don't move dock windows, so Pickit implements dragging itself (polling the pointer while the button is held), and dock windows don't take keyboard focus.
 

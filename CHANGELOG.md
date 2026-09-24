@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-24
+
+### Added
+- **Native engine.** Widgets can now be drawn with native GTK instead of WebKit: the AI describes them as a component tree (cards, rows, columns, labels, icons, images, progress bars, rings, sparklines, buttons) with data bindings, templates, filters and conditions. Five typical widgets use about 25 MB in total (24 MB from source, 27 MB in the Flatpak), compared with 180–244 MB for four HTML widgets, and a native-only desktop never loads WebKit.
+- The AI picks the engine automatically ("Auto"): native whenever the design fits, HTML for free-form art and animation. You can force either engine in the Pickit window, and convert a widget by refining it ("make it native").
+- Native widgets are validated against a strict schema before they're shown. The AI gets precise error messages for its automatic repair attempt, and styling can't inject CSS.
+- Native examples in `pickit/prompts/native_examples/` (clock, battery ring, system meters, weather, now playing), used to teach the AI and checked by the tests.
+- CI builds every native example under Xvfb and fails if WebKit gets loaded for a native-only desktop.
+
+### Changed
+- Existing widgets keep working unchanged; they're HTML widgets.
+
 ## [1.0.4] - 2026-09-24
 
 ### Changed
@@ -43,7 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/dengo07/pickit/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/dengo07/pickit/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/dengo07/pickit/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/dengo07/pickit/compare/v1.0.1...v1.0.2

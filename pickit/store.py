@@ -26,10 +26,11 @@ def signature(manifest: dict) -> str:
     """Identifies a widget's content; ignores position so drags don't trigger reloads."""
     rest = {k: v for k, v in manifest.items() if k not in ("x", "y")}
     h = hashlib.sha256(json.dumps(rest, sort_keys=True).encode())
-    try:
-        h.update(html_path(manifest["id"]).read_bytes())
-    except FileNotFoundError:
-        pass
+    for path in (html_path(manifest["id"]), ui_path(manifest["id"])):
+        try:
+            h.update(path.read_bytes())
+        except FileNotFoundError:
+            pass
     return h.hexdigest()
 
 
@@ -50,6 +51,11 @@ def widget_dir(widget_id: str) -> Path:
 
 def html_path(widget_id: str) -> Path:
     return widget_dir(widget_id) / "index.html"
+
+
+def ui_path(widget_id: str) -> Path:
+    """The component tree of a native-engine widget."""
+    return widget_dir(widget_id) / "ui.json"
 
 
 def _slug(name: str) -> str:
@@ -77,6 +83,10 @@ def load_html(widget_id: str) -> str:
     return html_path(widget_id).read_text()
 
 
+def load_ui(widget_id: str) -> dict:
+    return json.loads(ui_path(widget_id).read_text())
+
+
 def save_manifest(manifest: dict, notify: bool = True) -> None:
     d = widget_dir(manifest["id"])
     d.mkdir(parents=True, exist_ok=True)
@@ -94,8 +104,10 @@ def save_spec(spec: dict, widget_id: str | None = None, approved: bool = False,
         manifest = load(widget_id)
     else:
         manifest = {"id": _slug(spec["name"]), "enabled": True, "history": []}
+    engine = "native" if spec.get("engine") == "native" else "html"
     manifest.update({
         "name": spec["name"],
+        "engine": engine,
         "width": spec["width"],
         "height": spec["height"],
         "position": spec.get("position", "top-right"),
@@ -107,21 +119,32 @@ def save_spec(spec: dict, widget_id: str | None = None, approved: bool = False,
         manifest.setdefault("history", []).append(prompt)
     d = widget_dir(manifest["id"])
     d.mkdir(parents=True, exist_ok=True)
-    (d / "index.html").write_text(spec["html"])
+    # Exactly one content file, so a widget converted between engines leaves nothing stale.
+    if engine == "native":
+        ui_path(manifest["id"]).write_text(json.dumps(spec["ui"], indent=2))
+        html_path(manifest["id"]).unlink(missing_ok=True)
+    else:
+        html_path(manifest["id"]).write_text(spec["html"])
+        ui_path(manifest["id"]).unlink(missing_ok=True)
     save_manifest(manifest)
     return manifest
 
 
 def to_spec(manifest: dict) -> dict:
     """The subset of a widget that is round-tripped through the LLM for refinement."""
-    return {
+    spec = {
         "name": manifest["name"],
+        "engine": "native" if manifest.get("engine") == "native" else "html",
         "width": manifest["width"],
         "height": manifest["height"],
         "position": manifest.get("position", "top-right"),
         "commands": manifest.get("commands", {}),
-        "html": load_html(manifest["id"]),
     }
+    if spec["engine"] == "native":
+        spec["ui"] = load_ui(manifest["id"])
+    else:
+        spec["html"] = load_html(manifest["id"])
+    return spec
 
 
 def delete(widget_id: str) -> None:

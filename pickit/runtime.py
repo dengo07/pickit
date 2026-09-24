@@ -20,6 +20,9 @@ if IN_FLATPAK:
 else:
     CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
     DATA_HOME = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+# Explicit overrides (tests, or keeping a separate set of widgets) win everywhere.
+CONFIG_HOME = Path(os.environ.get("PICKIT_CONFIG_HOME") or CONFIG_HOME)
+DATA_HOME = Path(os.environ.get("PICKIT_DATA_HOME") or DATA_HOME)
 
 
 def host_argv(argv: list[str]) -> list[str]:

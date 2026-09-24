@@ -19,6 +19,8 @@ DEFAULTS = {
     "anthropic_api_key": "",
     # Start the desktop daemon at login so widgets survive reboots.
     "autostart": True,
+    # Default engine in the maker: "auto" (native whenever possible), "native" or "html".
+    "engine": "auto",
     "developer_extras": False,
 }
 

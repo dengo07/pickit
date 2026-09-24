@@ -18,6 +18,7 @@
       <li>They stay after you close the app and come back after a reboot</li>
       <li>Refine any widget by asking for changes, such as "make it bigger and blue"</li>
       <li>Live data comes from shell commands that you review and approve first</li>
+      <li>Light on memory: most widgets are drawn natively with GTK</li>
       <li>Works with your Claude Code login or an Anthropic API key</li>
     </ul>
   </description>
@@ -46,6 +47,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.1.0" date="2026-09-24">
+      <description>
+        <p>New native engine: most widgets are now drawn with GTK instead of a web engine, using a fraction of the memory (five typical widgets: about 25 MB). The AI picks native automatically whenever the design allows and uses HTML for free-form designs.</p>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-09-24">
       <description>
         <p>Widgets use about 40% less memory by sharing one web process, and newly generated widgets follow performance rules so they stay near 0% CPU when idle.</p>

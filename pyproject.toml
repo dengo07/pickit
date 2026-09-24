@@ -42,7 +42,7 @@ version = { attr = "pickit.__version__" }
 include = ["pickit*"]
 
 [tool.setuptools.package-data]
-pickit = ["data/*", "prompts/*"]
+pickit = ["data/*", "prompts/*.md", "prompts/native_examples/*.json"]
 
 [tool.ruff]
 line-length = 115

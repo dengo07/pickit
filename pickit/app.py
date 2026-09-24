@@ -19,7 +19,7 @@ from .dialogs import (  # noqa: E402
     install_css,
     label,
 )
-from .widget_window import WidgetView  # noqa: E402
+from .widget_window import engine_of, make_view  # noqa: E402
 
 APP_ID = runtime.APP_ID
 
@@ -151,28 +151,33 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.status = label()
         self.status.set_ellipsize(Pango.EllipsizeMode.END)
         self.status.set_line_wrap(False)
+        self.engine_combo = Gtk.ComboBoxText(tooltip_text=(
+            "Native: drawn with GTK, uses a few MB. HTML: drawn by WebKit, can look like anything "
+            "but uses much more memory. Auto picks native whenever the design allows."))
+        for engine_id, title in (("auto", "Auto engine"), ("native", "Native"), ("html", "HTML")):
+            self.engine_combo.append(engine_id, title)
+        self.engine_combo.set_active_id(app.cfg.get("engine", "auto"))
+        self.engine_combo.connect("changed", self._on_engine_changed)
         row.pack_start(self.generate_btn, False, False, 0)
+        row.pack_start(self.engine_combo, False, False, 0)
         row.pack_start(self.spinner, False, False, 0)
         row.pack_start(self.status, True, True, 0)
         main.pack_start(row, False, False, 0)
 
         # Preview area
         bg = Gtk.EventBox(name="preview-bg")
-        # WebKit's transparent pixels don't blend with parent GTK widgets, so the preview
-        # page gets an opaque backdrop matching the preview area.
-        self.preview = WidgetView(app.cfg.get("developer_extras", False), background=PREVIEW_BG)
-        self.preview.set_halign(Gtk.Align.CENTER)
-        self.preview.set_valign(Gtk.Align.CENTER)
-        self.preview.set_margin_top(24)
-        self.preview.set_margin_bottom(24)
+        # The preview view is created per draft engine (see _preview_view), so the maker only
+        # loads WebKit when an HTML widget is previewed.
+        self.preview = None
+        self.preview_engine = None
         self.preview_hint = label("Your widget preview appears here.")
         self.preview_hint.set_halign(Gtk.Align.CENTER)
         self.preview_hint.get_style_context().add_class("dim")
         stack_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         stack_box.set_valign(Gtk.Align.CENTER)
         stack_box.set_halign(Gtk.Align.CENTER)
-        stack_box.pack_start(self.preview, False, False, 0)
         stack_box.pack_start(self.preview_hint, False, False, 0)
+        self.preview_box = stack_box
         bg.add(stack_box)
         preview_scroll = Gtk.ScrolledWindow()
         preview_scroll.add(bg)
@@ -206,9 +211,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.draft, self.draft_approved, self.editing_id, self.prompts = None, False, None, []
         self.auto_place = False
         self.prompt.get_buffer().set_text("")
-        self.preview.load_widget("<html><body style='background:transparent'></body></html>", {}, False)
-        self.preview.set_size_request(1, 1)
-        self.preview.hide()
+        self._drop_preview()
         self.preview_hint.show()
         self.examples.show()
         self._sync_ui()
@@ -246,20 +249,52 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.commands_btn.set_visible(has and bool(self.draft.get("commands")))
         self.examples.set_visible(not has)
 
+    def _drop_preview(self):
+        if self.preview is not None:
+            self.preview.shutdown()
+            self.preview.destroy()
+            self.preview, self.preview_engine = None, None
+
+    def _preview_view(self, engine: str):
+        if self.preview_engine != engine:
+            self._drop_preview()
+            # WebKit's transparent pixels don't blend with parent GTK widgets, so an HTML
+            # preview gets an opaque backdrop matching the preview area.
+            self.preview = make_view(engine, self.app.cfg, desktop=False, background=PREVIEW_BG)
+            self.preview_engine = engine
+            self.preview.set_halign(Gtk.Align.CENTER)
+            self.preview.set_valign(Gtk.Align.CENTER)
+            self.preview.set_margin_top(24)
+            self.preview.set_margin_bottom(24)
+            self.preview_box.pack_start(self.preview, False, False, 0)
+            self.preview_box.reorder_child(self.preview, 0)
+        return self.preview
+
     def _show_preview(self):
         spec = self.draft
+        engine = engine_of(spec)
+        view = self._preview_view(engine)
         self.preview_hint.hide()
-        self.preview.show()
-        self.preview.set_size_request(spec["width"], spec["height"])
-        self.preview.load_widget(spec["html"], spec["commands"], self.draft_approved)
+        view.set_size_request(spec["width"], spec["height"])
+        if engine == "native":
+            view.load_widget(spec["ui"], spec["commands"], self.draft_approved)
+        else:
+            view.load_widget(spec["html"], spec["commands"], self.draft_approved)
+        view.show_all()
+        kind = "Native (GTK)" if engine == "native" else "HTML (WebKit)"
         n = len(spec["commands"])
         if n:
             state = "approved" if self.draft_approved else "NOT approved — preview shows no live data"
-            self.info.set_text(f"{spec['width']}×{spec['height']} · {spec['position']} · "
+            self.info.set_text(f"{kind} · {spec['width']}×{spec['height']} · {spec['position']} · "
                                f"{n} shell command{'s' if n != 1 else ''} ({state})")
         else:
-            self.info.set_text(f"{spec['width']}×{spec['height']} · {spec['position']} · no shell commands")
+            self.info.set_text(f"{kind} · {spec['width']}×{spec['height']} · {spec['position']} · "
+                               "no shell commands")
         self._sync_ui()
+
+    def _on_engine_changed(self, combo):
+        self.app.cfg["engine"] = combo.get_active_id()
+        config.save(self.app.cfg)
 
     # --- generation ------------------------------------------------------------
     def _on_prompt_key(self, _w, event):
@@ -280,6 +315,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.busy = True
         current = self.draft
         cfg = dict(self.app.cfg)
+        engine = self.engine_combo.get_active_id() or "auto"
         self.spinner.start()
         self.status.set_text(f"{'Refining' if current else 'Generating'}… (this can take a minute)")
         self._sync_ui()
@@ -289,7 +325,7 @@ class MakerWindow(Gtk.ApplicationWindow):
                 backend = backends.from_config(cfg)  # may probe for the CLI, so not on the UI thread
                 GLib.idle_add(self.status.set_text, f"{'Refining' if current else 'Generating'} with "
                               f"{backend.name}… (this can take a minute)")
-                spec = generator.generate(backend, text, current)
+                spec = generator.generate(backend, text, current, engine)
                 GLib.idle_add(self._on_generated, text, spec, current)
             except Exception as e:  # surfaced to the user, not fatal
                 GLib.idle_add(self._on_failed, str(e), isinstance(e, backends.SetupError))

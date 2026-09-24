@@ -1,0 +1,96 @@
+{
+ "name": "Battery Ring",
+ "engine": "native",
+ "width": 200,
+ "height": 200,
+ "position": "top-right",
+ "commands": {
+  "battery": {
+   "cmd": "b=$(ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -n1); if [ -n \"$b\" ]; then echo \"capacity=$(cat \"$b/capacity\" 2>/dev/null)\"; echo \"status=$(cat \"$b/status\" 2>/dev/null)\"; fi; d=$(upower -e 2>/dev/null | grep -m1 -i bat); if [ -n \"$d\" ]; then upower -i \"$d\" 2>/dev/null | awk -F: '/time to empty/{gsub(/^ +| +$/,\"\",$2); print \"empty=\"$2} /time to full/{gsub(/^ +| +$/,\"\",$2); print \"full=\"$2}'; fi",
+   "interval": 10
+  }
+ },
+ "ui": {
+  "type": "card",
+  "width": 184,
+  "height": 184,
+  "margin": 8,
+  "radius": 92,
+  "padding": 8,
+  "border_width": 0,
+  "background": "radial-gradient(circle at 50% 30%, rgba(44,48,62,0.93), rgba(14,16,22,0.93))",
+  "children": [
+   {
+    "type": "ring",
+    "size": 168,
+    "thickness": 10,
+    "value": "{battery.capacity}",
+    "track": "rgba(255,255,255,0.08)",
+    "color": [
+     {
+      "when": "{battery.status} == Charging",
+      "value": "#38bdf8"
+     },
+     {
+      "when": "{battery.capacity} <= 15",
+      "value": "#f87171"
+     },
+     {
+      "when": "{battery.capacity} <= 35",
+      "value": "#fbbf24"
+     },
+     "#4ade80"
+    ],
+    "children": [
+     {
+      "type": "label",
+      "text": "{battery.capacity|default:--}%",
+      "size": 40,
+      "weight": "semibold",
+      "color": "#eef1f6",
+      "align": "center"
+     },
+     {
+      "type": "label",
+      "size": 11,
+      "letter_spacing": 1.6,
+      "color": "rgba(238,241,246,0.72)",
+      "align": "center",
+      "text": [
+       {
+        "when": "{battery.status} == Charging",
+        "value": "CHARGING"
+       },
+       {
+        "when": "{battery.status} == Full",
+        "value": "FULL"
+       },
+       {
+        "when": "{battery.status} == 'Not charging'",
+        "value": "PLUGGED IN"
+       },
+       "ON BATTERY"
+      ]
+     },
+     {
+      "type": "label",
+      "size": 11,
+      "color": "rgba(238,241,246,0.5)",
+      "align": "center",
+      "text": [
+       {
+        "when": "{battery.full}",
+        "value": "{battery.full} to full"
+       },
+       {
+        "when": "{battery.empty}",
+        "value": "{battery.empty} left"
+       },
+       ""
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

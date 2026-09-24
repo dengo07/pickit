@@ -1,0 +1,172 @@
+{
+ "name": "System Meters",
+ "engine": "native",
+ "width": 300,
+ "height": 158,
+ "position": "top-right",
+ "commands": {
+  "stats": {
+   "cmd": "export LC_ALL=C LC_NUMERIC=C; a=$(head -1 /proc/stat); sleep 0.5; b=$(head -1 /proc/stat); cpu=$(printf '%s\\n%s\\n' \"$a\" \"$b\" | awk '{i=$5+$6; t=0; for(n=2;n<=NF;n++) t+=$n; if(NR==1){i1=i;t1=t}else{dt=t-t1; di=i-i1; printf \"%.1f\", (dt>0? (dt-di)*100/dt : 0)}}'); mem=$(awk '/^MemTotal:/{t=$2}/^MemAvailable:/{a=$2;h=1}/^MemFree:/{f=$2}/^Buffers:/{bu=$2}/^Cached:/{c=$2}END{if(!h)a=f+bu+c; if(t>0) printf \"%.1f %d %d\", (t-a)*100/t, (t-a)/1024, t/1024}' /proc/meminfo); disk=$(df -P / | awk 'NR==2{gsub(\"%\",\"\",$5); printf \"%s %.1f %.1f\", $5, $3/1048576, $2/1048576}'); echo \"cpu=$cpu\"; echo \"mem=$mem\"; echo \"disk=$disk\"",
+   "interval": 2
+  }
+ },
+ "ui": {
+  "type": "card",
+  "spacing": 12,
+  "children": [
+   {
+    "type": "column",
+    "spacing": 5,
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "CPU",
+        "size": 11,
+        "weight": "semibold",
+        "letter_spacing": 1.2,
+        "color": "rgba(255,255,255,0.7)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "",
+        "size": 11,
+        "color": "rgba(255,255,255,0.55)"
+       },
+       {
+        "type": "label",
+        "text": "  {stats.cpu|round}%",
+        "size": 12,
+        "weight": "bold",
+        "color": "#ffffff"
+       }
+      ]
+     },
+     {
+      "type": "progress",
+      "value": "{stats.cpu}",
+      "thickness": 6,
+      "color": [
+       {
+        "when": "{stats.cpu} >= 85",
+        "value": "#f87171"
+       },
+       {
+        "when": "{stats.cpu} >= 60",
+        "value": "#fbbf24"
+       },
+       "#60a5fa"
+      ]
+     }
+    ]
+   },
+   {
+    "type": "column",
+    "spacing": 5,
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "RAM",
+        "size": 11,
+        "weight": "semibold",
+        "letter_spacing": 1.2,
+        "color": "rgba(255,255,255,0.7)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{stats.mem|word:1|div:1024|round:1} / {stats.mem|word:2|div:1024|round:1} GB",
+        "size": 11,
+        "color": "rgba(255,255,255,0.55)"
+       },
+       {
+        "type": "label",
+        "text": "  {stats.mem|word:0|round}%",
+        "size": 12,
+        "weight": "bold",
+        "color": "#ffffff"
+       }
+      ]
+     },
+     {
+      "type": "progress",
+      "value": "{stats.mem|word:0}",
+      "thickness": 6,
+      "color": [
+       {
+        "when": "{stats.mem|word:0} >= 85",
+        "value": "#f87171"
+       },
+       {
+        "when": "{stats.mem|word:0} >= 60",
+        "value": "#fbbf24"
+       },
+       "#60a5fa"
+      ]
+     }
+    ]
+   },
+   {
+    "type": "column",
+    "spacing": 5,
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "DISK",
+        "size": 11,
+        "weight": "semibold",
+        "letter_spacing": 1.2,
+        "color": "rgba(255,255,255,0.7)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{stats.disk|word:1} / {stats.disk|word:2} GB",
+        "size": 11,
+        "color": "rgba(255,255,255,0.55)"
+       },
+       {
+        "type": "label",
+        "text": "  {stats.disk|word:0|round}%",
+        "size": 12,
+        "weight": "bold",
+        "color": "#ffffff"
+       }
+      ]
+     },
+     {
+      "type": "progress",
+      "value": "{stats.disk|word:0}",
+      "thickness": 6,
+      "color": [
+       {
+        "when": "{stats.disk|word:0} >= 85",
+        "value": "#f87171"
+       },
+       {
+        "when": "{stats.disk|word:0} >= 60",
+        "value": "#fbbf24"
+       },
+       "#60a5fa"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

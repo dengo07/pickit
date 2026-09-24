@@ -1,0 +1,128 @@
+{
+ "name": "Now Playing",
+ "engine": "native",
+ "width": 360,
+ "height": 124,
+ "position": "bottom-right",
+ "commands": {
+  "m": {
+   "cmd": "python3 - <<'PYEOF'\nimport base64, json, subprocess, sys\nPLAYER = \"org.mpris.MediaPlayer2.Player\"\ndef q(*args):\n    try:\n        r = subprocess.run((\"busctl\", \"--user\", \"--json=short\") + args, capture_output=True, text=True, timeout=3)\n        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None\n    except Exception:\n        return None\ndef prop(name, iface, key):\n    v = q(\"get-property\", name, \"/org/mpris/MediaPlayer2\", iface, key)\n    return v.get(\"data\") if isinstance(v, dict) else None\ndef pick():\n    names = [x[\"name\"] for x in (q(\"list\") or []) if str(x.get(\"name\", \"\")).startswith(\"org.mpris.MediaPlayer2.\")]\n    status = {n: prop(n, PLAYER, \"PlaybackStatus\") for n in names}\n    for want in (\"Playing\", \"Paused\"):\n        for n in names:\n            if status[n] == want:\n                return n, want\n    return None, None\nname, status = pick()\nif not name:\n    print(json.dumps({\"status\": \"Stopped\"})); sys.exit()\nm = prop(name, PLAYER, \"Metadata\") or {}\ng = lambda k: (m.get(k) or {}).get(\"data\")\nartist = g(\"xesam:artist\"); artist = \", \".join(artist) if isinstance(artist, list) else (artist or \"\")\nart = g(\"mpris:artUrl\") or \"\"\nif art.startswith(\"file://\"):\n    try:\n        raw = open(art[7:], \"rb\").read()\n        art = \"data:image/png;base64,\" + base64.b64encode(raw).decode() if len(raw) < 400000 else \"\"\n    except OSError:\n        art = \"\"\nprint(json.dumps({\"status\": status, \"title\": g(\"xesam:title\") or \"\", \"artist\": artist,\n                  \"player\": prop(name, \"org.mpris.MediaPlayer2\", \"Identity\") or name.split(\".\")[3],\n                  \"position\": (prop(name, PLAYER, \"Position\") or 0) / 1e6,\n                  \"length\": (g(\"mpris:length\") or 0) / 1e6, \"art\": art}))\nPYEOF",
+   "interval": 2
+  },
+  "playpause": {
+   "cmd": "python3 - <<'PYEOF'\nimport base64, json, subprocess, sys\nPLAYER = \"org.mpris.MediaPlayer2.Player\"\ndef q(*args):\n    try:\n        r = subprocess.run((\"busctl\", \"--user\", \"--json=short\") + args, capture_output=True, text=True, timeout=3)\n        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None\n    except Exception:\n        return None\ndef prop(name, iface, key):\n    v = q(\"get-property\", name, \"/org/mpris/MediaPlayer2\", iface, key)\n    return v.get(\"data\") if isinstance(v, dict) else None\ndef pick():\n    names = [x[\"name\"] for x in (q(\"list\") or []) if str(x.get(\"name\", \"\")).startswith(\"org.mpris.MediaPlayer2.\")]\n    status = {n: prop(n, PLAYER, \"PlaybackStatus\") for n in names}\n    for want in (\"Playing\", \"Paused\"):\n        for n in names:\n            if status[n] == want:\n                return n, want\n    return None, None\nname, _ = pick()\nif name:\n    subprocess.run([\"busctl\", \"--user\", \"call\", name, \"/org/mpris/MediaPlayer2\", PLAYER, \"PlayPause\"], timeout=3)\nPYEOF",
+   "interval": 0
+  },
+  "next": {
+   "cmd": "python3 - <<'PYEOF'\nimport base64, json, subprocess, sys\nPLAYER = \"org.mpris.MediaPlayer2.Player\"\ndef q(*args):\n    try:\n        r = subprocess.run((\"busctl\", \"--user\", \"--json=short\") + args, capture_output=True, text=True, timeout=3)\n        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None\n    except Exception:\n        return None\ndef prop(name, iface, key):\n    v = q(\"get-property\", name, \"/org/mpris/MediaPlayer2\", iface, key)\n    return v.get(\"data\") if isinstance(v, dict) else None\ndef pick():\n    names = [x[\"name\"] for x in (q(\"list\") or []) if str(x.get(\"name\", \"\")).startswith(\"org.mpris.MediaPlayer2.\")]\n    status = {n: prop(n, PLAYER, \"PlaybackStatus\") for n in names}\n    for want in (\"Playing\", \"Paused\"):\n        for n in names:\n            if status[n] == want:\n                return n, want\n    return None, None\nname, _ = pick()\nif name:\n    subprocess.run([\"busctl\", \"--user\", \"call\", name, \"/org/mpris/MediaPlayer2\", PLAYER, \"Next\"], timeout=3)\nPYEOF",
+   "interval": 0
+  },
+  "previous": {
+   "cmd": "python3 - <<'PYEOF'\nimport base64, json, subprocess, sys\nPLAYER = \"org.mpris.MediaPlayer2.Player\"\ndef q(*args):\n    try:\n        r = subprocess.run((\"busctl\", \"--user\", \"--json=short\") + args, capture_output=True, text=True, timeout=3)\n        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None\n    except Exception:\n        return None\ndef prop(name, iface, key):\n    v = q(\"get-property\", name, \"/org/mpris/MediaPlayer2\", iface, key)\n    return v.get(\"data\") if isinstance(v, dict) else None\ndef pick():\n    names = [x[\"name\"] for x in (q(\"list\") or []) if str(x.get(\"name\", \"\")).startswith(\"org.mpris.MediaPlayer2.\")]\n    status = {n: prop(n, PLAYER, \"PlaybackStatus\") for n in names}\n    for want in (\"Playing\", \"Paused\"):\n        for n in names:\n            if status[n] == want:\n                return n, want\n    return None, None\nname, _ = pick()\nif name:\n    subprocess.run([\"busctl\", \"--user\", \"call\", name, \"/org/mpris/MediaPlayer2\", PLAYER, \"Previous\"], timeout=3)\nPYEOF",
+   "interval": 0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "row",
+    "spacing": 12,
+    "children": [
+     {
+      "type": "image",
+      "src": "{m.art}",
+      "size": 84,
+      "radius": 10
+     },
+     {
+      "type": "column",
+      "hexpand": true,
+      "spacing": 2,
+      "children": [
+       {
+        "type": "label",
+        "text": [
+         {
+          "when": "{m.status} == Stopped",
+          "value": "NO PLAYER"
+         },
+         "{m.player|upper}"
+        ],
+        "size": 10,
+        "letter_spacing": 1.2,
+        "color": "rgba(255,255,255,0.6)"
+       },
+       {
+        "type": "label",
+        "text": [
+         {
+          "when": "{m.status} == Stopped",
+          "value": "Nothing playing"
+         },
+         "{m.title|default:Unknown title}"
+        ],
+        "size": 15,
+        "weight": "semibold",
+        "color": "#ffffff",
+        "ellipsize": true
+       },
+       {
+        "type": "label",
+        "text": "{m.artist}",
+        "size": 12,
+        "color": "rgba(255,255,255,0.7)",
+        "ellipsize": true
+       },
+       {
+        "type": "row",
+        "spacing": 4,
+        "visible": "{m.status} != Stopped",
+        "children": [
+         {
+          "type": "label",
+          "text": "{m.position|mmss}",
+          "size": 10,
+          "color": "rgba(255,255,255,0.6)"
+         },
+         {
+          "type": "progress",
+          "value": "{m.position}",
+          "max": "{m.length}",
+          "thickness": 3,
+          "valign": "center"
+         },
+         {
+          "type": "button",
+          "icon": "media-skip-backward-symbolic",
+          "action": "previous",
+          "color": "#ffffff"
+         },
+         {
+          "type": "button",
+          "icon": [
+           {
+            "when": "{m.status} == Playing",
+            "value": "media-playback-pause-symbolic"
+           },
+           "media-playback-start-symbolic"
+          ],
+          "action": "playpause",
+          "color": "#111111",
+          "background": "#ffffff"
+         },
+         {
+          "type": "button",
+          "icon": "media-skip-forward-symbolic",
+          "action": "next",
+          "color": "#ffffff"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
