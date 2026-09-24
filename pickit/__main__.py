@@ -18,8 +18,10 @@ def main() -> int:
     # desktops this runs the app through XWayland, where those hints still apply.
     os.environ.setdefault("GDK_BACKEND", "x11")
     # WebKit's GPU buffer sharing (DMABuf/GBM) fails on NVIDIA's driver, especially in
-    # sandboxes, leaving widgets invisible. Widgets are small, so shared memory is plenty.
-    os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+    # sandboxes, leaving widgets invisible. Hand frames over through shared memory instead.
+    # (Not WEBKIT_DISABLE_DMABUF_RENDERER: with WebKit 2.54+, as in the Flatpak runtime,
+    # that legacy path mis-draws composited layers such as shadows and animations.)
+    os.environ.setdefault("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1")
     from gi.repository import GLib
     GLib.set_prgname("pickit")  # WM_CLASS, so the launcher/taskbar icon matches
     args = sys.argv[1:]

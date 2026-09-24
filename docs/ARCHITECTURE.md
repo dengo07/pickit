@@ -29,7 +29,7 @@ sequenceDiagram
 
 | Module | Responsibility |
 |---|---|
-| `__main__.py` | CLI entry. Routes `run`/`stop` to the daemon and everything else to the maker. Sets `GDK_BACKEND=x11` and `WEBKIT_DISABLE_DMABUF_RENDERER=1`. |
+| `__main__.py` | CLI entry. Routes `run`/`stop` to the daemon and everything else to the maker. Sets `GDK_BACKEND=x11` and `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1`. |
 | `app.py` | Maker window: prompt, examples, generation thread, preview, approval, settings. |
 | `daemon.py` | Desktop daemon: watches the store and reconciles windows; handles the widget context-menu actions. |
 | `widget_window.py` | `WidgetView` (WebKit view with the JS bridge) and `WidgetWindow` (the desktop window: dock type, keep-below, sticky, transparency, manual drag, context menu, position saving). |
@@ -52,6 +52,6 @@ sequenceDiagram
 
 **Same data everywhere.** Inside Flatpak the XDG variables point into the sandbox, so `runtime.py` uses the real `~/.config` and `~/.local/share` there. The manifest grants access to just those folders. The source, Flatpak and AppImage versions therefore all share widgets, settings and the autostart entry.
 
-**NVIDIA.** WebKit's DMABuf renderer fails on NVIDIA's proprietary driver (especially under Flatpak) and leaves windows blank. Widgets are small, so Pickit always uses shared-memory rendering.
+**NVIDIA.** WebKit's GPU buffer sharing (DMABuf/GBM) fails on NVIDIA's proprietary driver, especially under Flatpak, and leaves windows blank. Pickit sets `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1`, which keeps WebKit's normal renderer but hands frames over through shared memory. It deliberately doesn't use `WEBKIT_DISABLE_DMABUF_RENDERER`: in WebKit 2.54+ (the Flatpak's GNOME 51 runtime) that legacy path mis-draws composited layers, so shadows, rounded cards and animated elements vanish.
 
 **WebKit transparency.** Transparent WebKit pixels don't blend with parent GTK widgets. They punch through to whatever is behind the top-level window. Desktop widgets rely on exactly that. The maker's preview instead gives WebKit an opaque background matching the preview area.
