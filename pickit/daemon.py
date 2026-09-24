@@ -18,6 +18,28 @@ from .widget_window import WidgetWindow  # noqa: E402
 DAEMON_ID = runtime.APP_ID + ".Desktop"
 
 
+_lock_file = None
+
+
+def acquire_instance_lock() -> bool:
+    """Only one widget daemon may run, whichever package (source, Flatpak, AppImage) or
+    app ID started it; otherwise every widget would be drawn twice. The lock lives in the
+    shared data directory and is released automatically when the process exits."""
+    global _lock_file
+    import fcntl
+    if _lock_file is not None:
+        return True
+    store.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    lock = open(store.DATA_DIR / "daemon.lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        return False
+    _lock_file = lock  # keep the file open (and locked) for the life of the process
+    return True
+
+
 def is_running() -> bool:
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     reply = bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",

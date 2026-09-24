@@ -42,9 +42,12 @@ def main() -> int:
             print("No widgets yet. Run: python -m pickit")
         return 0
     if args and args[0] in ("run", "stop"):
-        from .daemon import DesktopDaemon, is_running
+        from .daemon import DesktopDaemon, acquire_instance_lock, is_running
         if args[0] == "stop" and not is_running():
             print("The desktop daemon is not running.")
+            return 0
+        if args[0] == "run" and not acquire_instance_lock():
+            print("pickit: a widget daemon is already running")
             return 0
         return DesktopDaemon().run(sys.argv)
     if args and args[0] not in ("new", "edit", "gui"):

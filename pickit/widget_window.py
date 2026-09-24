@@ -126,7 +126,9 @@ class WidgetWindow(Gtk.Window):
         self.set_resizable(False)
         self.set_skip_taskbar_hint(True)
         self.set_skip_pager_hint(True)
-        self.set_wmclass("pickit", "Pickit")
+        # Not "pickit": that class belongs to the Pickit launcher (StartupWMClass), and docks
+        # such as Plank would show widgets as a running Pickit app.
+        self.set_wmclass("pickit-widget", "PickitWidget")
         # DOCK + keep-below puts the window in the WM's "bottom" layer: always above the
         # desktop background/icons, always below every normal window, not hidden by
         # Show Desktop, and never raised when clicked. (A DESKTOP-type window would get

@@ -52,14 +52,21 @@ def self_command(*args: str) -> list[str]:
     return ["env", f"PYTHONPATH={PROJECT_DIR}", sys.executable, "-m", "pickit", *args]
 
 
+# Set by app launchers for the launched process. Docks (Plank via bamf) use them to tie
+# windows to a launcher, so a spawned daemon must not inherit them.
+LAUNCHER_ENV = ("GIO_LAUNCHED_DESKTOP_FILE", "GIO_LAUNCHED_DESKTOP_FILE_PID", "BAMF_DESKTOP_FILE_HINT",
+                "DESKTOP_STARTUP_ID", "XDG_ACTIVATION_TOKEN")
+
+
 def spawn_self(*args: str, log_path: Path | None = None) -> None:
     """Start another instance of this app fully detached (survives this process exiting).
 
     Inside Flatpak the new process is started through the host, so it gets its own
     sandbox instead of being killed when this sandbox's main process exits.
     """
+    env = {k: v for k, v in host_env().items() if k not in LAUNCHER_ENV}
     log = open(log_path, "ab") if log_path else subprocess.DEVNULL
-    subprocess.Popen(host_argv(self_command(*args)), env=host_env(), cwd=str(Path.home()),
+    subprocess.Popen(host_argv(self_command(*args)), env=env, cwd=str(Path.home()),
                      stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
 
 
