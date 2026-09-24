@@ -46,6 +46,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.4" date="2026-09-24">
+      <description>
+        <p>Widgets use about 40% less memory by sharing one web process, and newly generated widgets follow performance rules so they stay near 0% CPU when idle.</p>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-09-24">
       <description>
         <p>New media widgets work with any player without extra packages: they read players directly over D-Bus instead of relying on playerctl. Generated widgets also avoid other tools that are often missing.</p>

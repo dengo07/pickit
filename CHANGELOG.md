@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-24
+
+### Changed
+- Desktop widgets share one WebKit web process instead of one each: about 40% less memory (4 widgets: 306 MB → 180 MB in the Flatpak, 379 MB → 244 MB from source). If that process crashes, every widget restarts itself.
+- Generated widgets follow performance rules (no endless animations, at most one redraw per second, light polling), so they stay near 0% CPU when idle. One media widget went from about 30% of a CPU core to under 3%.
+
 ## [1.0.3] - 2026-09-24
 
 ### Changed
@@ -37,7 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/dengo07/pickit/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/dengo07/pickit/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/dengo07/pickit/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/dengo07/pickit/compare/v1.0.0...v1.0.1

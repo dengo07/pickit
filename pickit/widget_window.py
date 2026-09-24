@@ -1,6 +1,7 @@
 """Hosts a widget's HTML in a transparent WebKit view, as a preview or on the desktop."""
 
 import json
+import weakref
 
 import gi
 
@@ -16,18 +17,29 @@ MARGIN = 24
 WATCHDOG_SECONDS = 30
 MAX_CRASH_RELOADS = 5  # per 10 minutes, so a page that always crashes doesn't loop forever
 
+# Desktop widgets share one WebKit web process instead of one each ("related views"),
+# which is most of their memory. The trade-off: a crash or hang restarts all of them.
+SHARE_WEB_PROCESS = True
+_shared_views: "weakref.WeakSet[WidgetView]" = weakref.WeakSet()
+
 
 class WidgetView(WebKit2.WebView):
     """A WebView with the `window.widget` bridge. Commands run only if `run_commands`."""
 
-    def __init__(self, developer_extras=False, background: str | None = None):
+    def __init__(self, developer_extras=False, background: str | None = None, shared=False):
         manager = WebKit2.UserContentManager()
         manager.add_script(WebKit2.UserScript(
             BRIDGE_JS, WebKit2.UserContentInjectedFrames.TOP_FRAME,
             WebKit2.UserScriptInjectionTime.START, None, None))
         manager.register_script_message_handler("widget")
         manager.connect("script-message-received::widget", self._on_message)
-        super().__init__(user_content_manager=manager)
+        kwargs = {"user_content_manager": manager}
+        anchor = next(iter(_shared_views), None) if shared and SHARE_WEB_PROCESS else None
+        if anchor is not None:
+            kwargs["related_view"] = anchor  # same web process as the other widgets
+        super().__init__(**kwargs)
+        if shared:
+            _shared_views.add(self)
 
         settings = self.get_settings()
         settings.set_enable_developer_extras(developer_extras)
@@ -207,7 +219,7 @@ class WidgetWindow(Gtk.Window):
         self.stick()
         self.connect("map-event", self._reassert_layer)
 
-        self.view = WidgetView(cfg.get("developer_extras", False))
+        self.view = WidgetView(cfg.get("developer_extras", False), shared=True)
         self.view.enable_watchdog()
         self.view.on_drag = self._begin_drag
         self.view.connect("button-press-event", self._on_button_press)

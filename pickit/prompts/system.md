@@ -41,6 +41,14 @@ Commands can only be run if declared in `commands`; the user reviews and approve
 - For weather without an API key use `curl -s 'https://wttr.in/<city>?format=j1'` (JSON) and an interval of at least 900.
 - Choose sensible intervals: 1–5 s for system meters, minutes for network data. Pickit also re-runs periodic commands immediately on power, resume and network changes, so slow intervals don't make widgets feel stale.
 
+# Performance
+
+Widgets run all day on machines of every speed, so an idle widget must cost next to nothing:
+- Never run animations forever: no `animation: … infinite`, and no CSS `transition` that JavaScript re-triggers before it finishes. A progress bar updated every 250 ms with a 250 ms transition never stops animating, which makes WebKit redraw the widget at 60 fps.
+- Update the display at most once per second (a clock with seconds: once per second). Draw progress bars without transitions.
+- Keep expensive effects (`filter: blur()`, large `box-shadow`, `backdrop-filter`) on elements that don't change; never animate them.
+- Poll no more often than the data really changes (media status 2 s, system meters 2–5 s, network data minutes), and keep each command light.
+
 # Design
 
 - Make it look polished and intentional: good typography (system-ui or a Google font), consistent spacing, subtle shadows, readable contrast against both light and dark wallpapers unless the user specifies otherwise (a translucent dark card with light text is a safe default).
