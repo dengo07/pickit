@@ -55,3 +55,4 @@ ignore = ["E402"]  # gi.require_version() must run before `from gi.repository im
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # import the in-tree `pickit` package without installing it
