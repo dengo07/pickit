@@ -93,6 +93,6 @@ jobs:
           body: |
             ## Install
 
-            - **Flatpak (recommended):** download **Pickit.flatpakref** below and open it. Your software center opens with an Install button, and updates arrive automatically. Or run `flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref`
+            - **Flatpak (recommended):** download **Pickit.flatpakref** below and open it. Your software center opens with an Install button, and updates arrive automatically. Or run `flatpak install https://dengo07.github.io/pickit/Pickit.flatpakref`
             - **AppImage:** download **Pickit-x86_64.AppImage**, then right-click → Properties → Permissions → *Allow executing file as program*, and double-click it.
-            - `Pickit.flatpak` is an offline bundle, for installing without internet access: `flatpak install --user Pickit.flatpak`
+            - `Pickit.flatpak` is an offline bundle, for installing without internet access: `flatpak install Pickit.flatpak`

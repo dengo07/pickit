@@ -24,7 +24,7 @@ Each release replaces the Pages site with a fresh repository containing only the
 ```bash
 flatpak install --user flathub org.gnome.Sdk//51 org.flatpak.Builder
 make flatpak
-flatpak install --user dist/Pickit.flatpak
+flatpak install dist/Pickit.flatpak
 ```
 
 - **Runtime:** `org.gnome.Platform//51`, which provides GTK 3, WebKit2GTK 4.1, PyGObject, pycairo and Python 3.14.

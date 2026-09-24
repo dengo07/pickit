@@ -36,7 +36,7 @@ Pickit uses Claude to turn your description into a working widget, then pins it 
 Or from a terminal:
 
 ```bash
-flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref
+flatpak install https://dengo07.github.io/pickit/Pickit.flatpakref
 ```
 
 <details>
@@ -45,7 +45,7 @@ flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref
 | Package | Install |
 |---|---|
 | [`Pickit-x86_64.AppImage`](https://github.com/dengo07/pickit/releases/latest/download/Pickit-x86_64.AppImage) | A single file, nothing installed. Browsers save downloads as non-executable, so first right-click → **Properties** → **Permissions** → **Allow executing file as program**, then double-click it. From a terminal: `chmod +x Pickit-x86_64.AppImage && ./Pickit-x86_64.AppImage`. It adds itself to your app menu. |
-| [`Pickit.flatpak`](https://github.com/dengo07/pickit/releases/latest/download/Pickit.flatpak) | An offline bundle, for installing without internet access: `flatpak install --user Pickit.flatpak`. It doesn't update itself. |
+| [`Pickit.flatpak`](https://github.com/dengo07/pickit/releases/latest/download/Pickit.flatpak) | An offline bundle, for installing without internet access: `flatpak install Pickit.flatpak`. It doesn't update itself. |
 
 </details>
 
@@ -53,6 +53,8 @@ flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref
 - **AppImage** needs glibc 2.39 or newer: Ubuntu 24.04+, Mint 22+, Fedora 40+, Debian 13+, Arch, openSUSE Tumbleweed.
 
 All versions share the same widgets and settings, so you can switch between them.
+
+The Flatpak installs system-wide, like the apps from your software center, so it **reuses the runtimes and graphics drivers you already have**. The first time, it downloads anything missing: the GNOME runtime (about 400 MB, shared with every GNOME Flatpak app) and, on NVIDIA systems, Flatpak's copy of your driver version. Later updates only download Pickit itself (about 5 MB).
 
 ### Connect to Claude
 

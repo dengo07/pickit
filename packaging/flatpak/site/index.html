@@ -68,8 +68,10 @@
         (Linux Mint Software Manager, GNOME Software or KDE Discover) opens with an <strong>Install</strong> button.
         Updates then arrive through your normal software updates.</p>
       <p>Or from a terminal:</p>
-      <pre>flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref</pre>
+      <pre>flatpak install https://dengo07.github.io/pickit/Pickit.flatpakref</pre>
       <p>On Ubuntu or Debian, install Flatpak first: <code>sudo apt install flatpak</code>.</p>
+      <p>Pickit reuses the runtimes and graphics drivers your other Flatpak apps already use. The first install
+        downloads only what's missing (typically the GNOME runtime, about 400 MB); updates are about 5 MB.</p>
     </div>
     <div class="card">
       <h3>AppImage (a single file, no installation)</h3>
