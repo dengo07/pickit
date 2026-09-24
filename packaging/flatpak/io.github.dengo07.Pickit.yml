@@ -13,6 +13,10 @@ finish-args:
   # Widgets' approved shell commands and the Claude Code CLI run on the host
   # (via flatpak-spawn --host); the desktop daemon is started the same way.
   - --talk-name=org.freedesktop.Flatpak
+  # Refresh widgets immediately on power changes, resume from sleep and network changes.
+  - --system-talk-name=org.freedesktop.UPower
+  - --system-talk-name=org.freedesktop.login1
+  - --system-talk-name=org.freedesktop.NetworkManager
   # Start the desktop daemon at login so widgets survive reboots.
   - --filesystem=xdg-config/autostart:create
   # Widgets and settings live in the normal locations, shared with the AppImage/source versions.

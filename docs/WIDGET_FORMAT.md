@@ -30,8 +30,10 @@ You can write widgets by hand, or edit generated ones. After changing files, rig
 ```
 
 - `position` is one of `top-left`, `top-center`, `top-right`, `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`. It's used until the widget is moved.
-- `interval` is in seconds (minimum 1). `0` means the command runs once on load and afterwards only when the widget calls `widget.run()`.
+- `interval` is in seconds (minimum 1). `0` marks an **action** (play/pause, next track...): it never runs by itself, only when the widget calls `widget.run()`. For data that only needs loading once, use a long interval such as `86400`.
 - Commands run through `bash -c` as your user, in your home directory, with a 20-second timeout and 256 KB of captured output.
+- Periodic commands (`interval` > 0) also re-run right away when something relevant happens: power plugged or unplugged, or battery level changes (commands with an interval of 5 minutes or less), and waking from sleep or network changes (all periodic commands). On-demand commands (`interval: 0`) only ever run when the widget calls them.
+- Widgets heal themselves: if a widget's page crashes, or stops responding for about a minute, Pickit restarts it.
 
 ## The `window.widget` JS API
 

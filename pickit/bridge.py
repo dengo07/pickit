@@ -49,11 +49,24 @@ class CommandRunner:
         self._stopped = False
 
     def start(self):
+        # Only periodic commands run automatically. Interval-0 commands are actions
+        # (play/pause, next...) and must run only when the widget asks for them.
         for key, c in self.commands.items():
-            self.run(key)
             if c.get("interval", 0) > 0:
+                self.run(key)
                 ms = int(c["interval"] * 1000)
                 self._timers.append(GLib.timeout_add(ms, self._tick, key))
+
+    def refresh(self, max_interval: float | None = None):
+        """Re-run periodic commands now (never on-demand actions such as play/pause).
+
+        `max_interval` limits it to fast-changing data, e.g. skip a weather fetch that
+        normally runs every 30 minutes when only the battery changed.
+        """
+        for key, c in self.commands.items():
+            interval = c.get("interval", 0)
+            if interval > 0 and (max_interval is None or interval <= max_interval):
+                self.run(key)
 
     def _tick(self, key):
         if self._stopped:

@@ -12,6 +12,7 @@ from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 from . import autostart, config, runtime, store  # noqa: E402
 from .dialogs import approval_dialog, confirm, install_css  # noqa: E402
+from .events import SystemEvents  # noqa: E402
 from .widget_window import WidgetWindow  # noqa: E402
 
 # Must be prefixed by the app ID: Flatpak only lets an app own names under its ID.
@@ -62,6 +63,7 @@ class DesktopDaemon(Gtk.Application):
         if cfg.get("autostart", True):
             autostart.set_enabled(True)  # also refreshes the path if the project moved
         self._monitor = store.watch(self.reconcile)
+        self._events = SystemEvents(self.refresh_all)
         self.reconcile()
 
     def do_command_line(self, cmdline):
@@ -69,6 +71,16 @@ class DesktopDaemon(Gtk.Application):
         if args and args[0] == "stop":
             self.quit()
         return 0
+
+    def refresh_all(self, reason):
+        """A system event happened: fetch fresh data now instead of on the next timer.
+
+        Power changes only affect fast-changing data; after waking up or a network
+        change even slow data (weather, IP address) is stale, so everything refreshes.
+        """
+        max_interval = 300 if reason == "power" else None
+        for win in self.windows.values():
+            win.view.refresh(max_interval)
 
     def reconcile(self):
         cfg = config.load()

@@ -49,6 +49,8 @@
     <release version="1.0.1" date="2026-09-24">
       <description>
         <ul>
+          <li>Widgets refresh immediately on power changes, waking from sleep and network changes</li>
+          <li>Widgets restart themselves if they crash or stop responding</li>
           <li>Widgets no longer appear in docks such as Plank</li>
           <li>Only one widget daemon runs at a time, so widgets are never drawn twice</li>
           <li>Signed Flatpak repository: install and update from any software center</li>

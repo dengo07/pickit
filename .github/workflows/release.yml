@@ -47,21 +47,38 @@ jobs:
         env:
           FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
         run: |
+          # Report the exact failing command as a visible error annotation.
+          trap 'echo "::error::Signing failed (exit $?) at: $BASH_COMMAND"' ERR
+          set -eE
           if [ -z "$FLATPAK_GPG_PRIVATE_KEY" ]; then
             echo "::error::The FLATPAK_GPG_PRIVATE_KEY secret is not set (see docs/PACKAGING.md)."
             exit 1
           fi
           export GNUPGHOME="$(mktemp -d)"
-          echo "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+          chmod 700 "$GNUPGHOME"
+          gpg --version | head -1
+          # Containers have no session agent; start one so secret keys can be imported.
+          gpgconf --launch gpg-agent
+          printf '%s\n' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --pinentry-mode loopback --passphrase '' --import
           FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
+          if [ -z "$FPR" ]; then
+            echo "::error::No secret key found in FLATPAK_GPG_PRIVATE_KEY. Paste the whole ASCII-armored block."
+            exit 1
+          fi
           EXPECTED=$(gpg --show-keys --with-colons packaging/flatpak/pickit.gpg | awk -F: '/^fpr/ {print $10; exit}')
-          [ "$FPR" = "$EXPECTED" ] \
-            || { echo "::error::Secret key $FPR does not match packaging/flatpak/pickit.gpg ($EXPECTED)"; exit 1; }
-          flatpak build-sign --gpg-sign="$FPR" repo io.github.dengo07.Pickit master
-          flatpak build-sign --runtime --gpg-sign="$FPR" repo io.github.dengo07.Pickit.Debug master
-          flatpak build-update-repo --gpg-sign="$FPR" --prune --generate-static-deltas repo
+          if [ "$FPR" != "$EXPECTED" ]; then
+            echo "::error::Secret key $FPR does not match packaging/flatpak/pickit.gpg ($EXPECTED)."
+            exit 1
+          fi
+          echo "Signing with $FPR"
+          flatpak build-sign --gpg-sign="$FPR" --gpg-homedir="$GNUPGHOME" repo io.github.dengo07.Pickit master
+          if flatpak repo --branches repo | grep -q "runtime/io.github.dengo07.Pickit.Debug/"; then
+            flatpak build-sign --runtime --gpg-sign="$FPR" --gpg-homedir="$GNUPGHOME" repo io.github.dengo07.Pickit.Debug master
+          fi
+          flatpak build-update-repo --gpg-sign="$FPR" --gpg-homedir="$GNUPGHOME" --prune --generate-static-deltas repo
           # Offline bundle that still receives updates from the signed repository.
-          flatpak build-bundle --gpg-sign="$FPR" --gpg-keys=packaging/flatpak/pickit.gpg \
+          flatpak build-bundle --gpg-sign="$FPR" --gpg-homedir="$GNUPGHOME" \
+            --gpg-keys=packaging/flatpak/pickit.gpg \
             --repo-url=https://dengo07.github.io/pickit/repo/ \
             --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
             repo Pickit.flatpak io.github.dengo07.Pickit master

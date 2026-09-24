@@ -7,12 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.0.1] - 2026-09-24
 
+### Added
+- One-click Flatpak install with automatic updates: a GPG-signed Flatpak repository and landing page on GitHub Pages, plus `Pickit.flatpakref` in every release. The offline `Pickit.flatpak` bundle also receives updates.
+- Widgets react to the system: power plugged or unplugged and battery changes refresh them immediately, and so do waking from sleep and network changes.
+- Widgets heal themselves: a crashed widget page is restarted automatically, and a watchdog restarts pages that stop responding.
+
 ### Fixed
+- On-demand action commands (such as play/pause) no longer run by themselves when a widget loads.
 - Widgets no longer show up in docks such as Plank as a running Pickit app. Only the Pickit window does.
 - Only one widget daemon runs at a time, even with several Pickit versions installed (source, Flatpak, AppImage), so widgets are no longer drawn twice.
-
-### Added
-- One-click Flatpak install with automatic updates: a GPG-signed Flatpak repository and landing page on GitHub Pages, plus `Pickit.flatpakref` in every release. The offline `Pickit.flatpak` bundle now also receives updates.
 
 ## [1.0.0] - 2026-09-24
 

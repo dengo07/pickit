@@ -10,7 +10,7 @@ Respond with ONLY one JSON object — no prose, no markdown fences. Schema:
   "height": 180,           // window height in px (40–1200)
   "position": "top-right", // one of: top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right
   "commands": {            // optional; shell commands that feed data into the widget
-    "<key>": {"cmd": "<bash command>", "interval": 5}   // interval in seconds (>= 1), 0 = run only on load / on demand
+    "<key>": {"cmd": "<bash command>", "interval": 5}   // seconds (>= 1); 0 = only when the widget calls widget.run(key)
   },
   "html": "<!doctype html>..."   // the full widget document
 }
@@ -26,7 +26,7 @@ Respond with ONLY one JSON object — no prose, no markdown fences. Schema:
 # The `widget` bridge (available as `window.widget` before your scripts run)
 
 - `widget.on(key, callback)` — `callback(stdout, result)` is called every time command `key` finishes. `stdout` is a string (trimmed). `result` is `{out, err, code}`. If a result already exists when you subscribe, the callback fires immediately.
-- `widget.run(key)` — run a declared command right now (e.g. from a button click). Useful for actions such as `playerctl play-pause`; declare such commands with `"interval": 0`.
+- `widget.run(key)` — run a declared command right now (e.g. from a button click). Useful for actions such as `playerctl play-pause`; declare such commands with `"interval": 0`. Interval-0 commands never run by themselves; for data that only needs loading once, use a long interval such as 86400.
 - `widget.drag(event)` — call from a `mousedown` handler to let the user move the window, e.g. `el.addEventListener('mousedown', e => widget.drag(e))`. Users can also Alt+drag anywhere and right-click for the widget menu, so do not bind the right mouse button.
 
 Commands can only be run if declared in `commands`; the user reviews and approves them before they run.
@@ -38,7 +38,7 @@ Commands can only be run if declared in `commands`; the user reviews and approve
 - Output something easy to parse: a single number, `key=value` lines, or JSON. Do the parsing work in the command where that is simpler.
 - For CPU usage, sample /proc/stat twice (e.g. `awk` over two reads with `sleep 0.5`) rather than trusting `top`'s first iteration.
 - For weather without an API key use `curl -s 'https://wttr.in/<city>?format=j1'` (JSON) and an interval of at least 900.
-- Choose sensible intervals: 1–5 s for system meters, minutes for network data.
+- Choose sensible intervals: 1–5 s for system meters, minutes for network data. Pickit also re-runs periodic commands immediately on power, resume and network changes, so slow intervals don't make widgets feel stale.
 
 # Design
 
