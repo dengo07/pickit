@@ -8,16 +8,27 @@ Releases ship two self-contained packages. Pushing a `v*` tag triggers [`.github
 
 ## One-time repository setup
 
-GitHub Pages must be switched on before the first release, or the `pages` job fails:
+Do this before the first release:
 
 1. **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**.
 2. **Settings → Environments → `github-pages` → Deployment branches and tags:** add a rule of type **Tag** with the pattern `v*`. By default only `main` may deploy, and releases deploy from a tag.
+3. **Settings → Secrets and variables → Actions → New repository secret:** name it `FLATPAK_GPG_PRIVATE_KEY`, and paste the complete ASCII-armored private signing key as the value (`-----BEGIN PGP PRIVATE KEY BLOCK-----` … `END`).
 
 ## Why a Flatpak repository
 
 Most desktops don't open a `.flatpak` bundle on double-click (Linux Mint's Software Manager doesn't), and bundles never update. A `.flatpakref` points at a repository instead: software centers open it with an Install button, and `flatpak update` or the system updater picks up new releases.
 
-Each release replaces the Pages site with a fresh repository containing only the newest build; clients update from whatever commit they have. The repository is currently **not GPG-signed**, so integrity relies on HTTPS and GitHub. Flatpak and software centers accept it and label it "unverified". To sign it, generate a key, store it as an Actions secret, pass `gpg-sign` to the builder step and add `GPGKey=` (base64) to both site files.
+Each release replaces the Pages site with a fresh repository containing only the newest build; clients update from whatever commit they have.
+
+### Signing
+
+System-wide installs, which is what software centers do, **refuse unsigned repositories** ("Can't pull from untrusted non-gpg verified remote"). So the release workflow signs the commits, the summary and the offline bundle.
+
+- The public key is [`packaging/flatpak/pickit.gpg`](../packaging/flatpak/pickit.gpg), fingerprint `C703 D4EE 2B0E 241A AF93  8A08 85CC 870A 31C3 A7A4`. It's embedded as `GPGKey=` in [`Pickit.flatpakref`](../packaging/flatpak/site/Pickit.flatpakref) and [`pickit.flatpakrepo`](../packaging/flatpak/site/pickit.flatpakrepo).
+- The private key lives only in the `FLATPAK_GPG_PRIVATE_KEY` secret and with the maintainer. The workflow refuses to publish without it, or if it doesn't match `pickit.gpg`.
+- **Don't lose or replace the key.** Installed copies trust only this key, so a new key means every user has to reinstall to keep getting updates. If you ever must rotate it, update `pickit.gpg`, the `GPGKey=` lines and the secret together.
+
+Software centers still label the app "unverified", because that label means "not from Flathub", not "unsigned".
 
 ## Flatpak: `make flatpak` → `dist/Pickit.flatpak`
 

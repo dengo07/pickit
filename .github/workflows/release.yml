@@ -40,9 +40,33 @@ jobs:
           upload-artifact: false
       # The builder leaves an OSTree repository in ./repo. Published on GitHub Pages, it
       # lets Pickit.flatpakref install with a double-click, and users get updates.
+      # System-wide installs (what software centers do) refuse unsigned repositories,
+      # so everything is signed with the key in the FLATPAK_GPG_PRIVATE_KEY secret; its
+      # public half is packaging/flatpak/pickit.gpg (also embedded in the site files).
+      - name: Sign the Flatpak repository
+        env:
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$FLATPAK_GPG_PRIVATE_KEY" ]; then
+            echo "::error::The FLATPAK_GPG_PRIVATE_KEY secret is not set (see docs/PACKAGING.md)."
+            exit 1
+          fi
+          export GNUPGHOME="$(mktemp -d)"
+          echo "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+          FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
+          EXPECTED=$(gpg --show-keys --with-colons packaging/flatpak/pickit.gpg | awk -F: '/^fpr/ {print $10; exit}')
+          [ "$FPR" = "$EXPECTED" ] \
+            || { echo "::error::Secret key $FPR does not match packaging/flatpak/pickit.gpg ($EXPECTED)"; exit 1; }
+          flatpak build-sign --gpg-sign="$FPR" repo io.github.dengo07.Pickit master
+          flatpak build-sign --runtime --gpg-sign="$FPR" repo io.github.dengo07.Pickit.Debug master
+          flatpak build-update-repo --gpg-sign="$FPR" --prune --generate-static-deltas repo
+          # Offline bundle that still receives updates from the signed repository.
+          flatpak build-bundle --gpg-sign="$FPR" --gpg-keys=packaging/flatpak/pickit.gpg \
+            --repo-url=https://dengo07.github.io/pickit/repo/ \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            repo Pickit.flatpak io.github.dengo07.Pickit master
       - name: Assemble the GitHub Pages site (Flatpak repository + landing page)
         run: |
-          flatpak build-update-repo --prune --generate-static-deltas repo
           mkdir -p site
           cp -r packaging/flatpak/site/. site/
           cp pickit/data/io.github.dengo07.Pickit.svg site/icon.svg

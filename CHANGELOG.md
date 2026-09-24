@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- One-click Flatpak install with automatic updates: a Flatpak repository and landing page on GitHub Pages, plus `Pickit.flatpakref` in every release.
+- One-click Flatpak install with automatic updates: a GPG-signed Flatpak repository and landing page on GitHub Pages, plus `Pickit.flatpakref` in every release. The offline `Pickit.flatpak` bundle now also receives updates.
 
 ## [1.0.0] - 2026-09-24
 
