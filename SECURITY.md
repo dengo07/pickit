@@ -15,7 +15,7 @@ Read commands before approving them. A generated command should be short, read-o
 
 ## Reporting a vulnerability
 
-Please **don't open a public issue**. Use [GitHub private vulnerability reporting](https://github.com/dengobey/pickit/security/advisories/new) instead.
+Please **don't open a public issue**. Use [GitHub private vulnerability reporting](https://github.com/dengo07/pickit/security/advisories/new) instead.
 
 Examples of what we want to hear about:
 

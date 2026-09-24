@@ -20,7 +20,7 @@ body:
     id: version
     attributes:
       label: Pickit version
-      description: Output of `pickit --version` (or `flatpak run io.github.dengobey.Pickit --version`)
+      description: Output of `pickit --version` (or `flatpak run io.github.dengo07.Pickit --version`)
   - type: input
     id: system
     attributes:

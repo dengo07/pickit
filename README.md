@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="pickit/data/io.github.dengobey.Pickit.svg" width="96" alt="Pickit icon">
+<img src="pickit/data/io.github.dengo07.Pickit.svg" width="96" alt="Pickit icon">
 
 # Pickit
 
 **Describe a desktop widget in plain words, and get it on your Linux desktop.**
 
-[![CI](https://github.com/dengobey/pickit/actions/workflows/ci.yml/badge.svg)](https://github.com/dengobey/pickit/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/dengobey/pickit)](https://github.com/dengobey/pickit/releases/latest)
+[![CI](https://github.com/dengo07/pickit/actions/workflows/ci.yml/badge.svg)](https://github.com/dengo07/pickit/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/dengo07/pickit)](https://github.com/dengo07/pickit/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Platform: Linux](https://img.shields.io/badge/platform-Linux-lightgrey)
 
@@ -33,8 +33,8 @@ Pickit uses Claude to turn your description into a working widget, then pins it 
 
 | | Download | Install |
 |---|---|---|
-| **Flatpak** (recommended) | [`Pickit.flatpak`](https://github.com/dengobey/pickit/releases/latest/download/Pickit.flatpak) | Double-click the file, or run `flatpak install --user Pickit.flatpak` |
-| **AppImage** | [`Pickit-x86_64.AppImage`](https://github.com/dengobey/pickit/releases/latest/download/Pickit-x86_64.AppImage) | `chmod +x Pickit-x86_64.AppImage && ./Pickit-x86_64.AppImage` (it adds itself to your app menu) |
+| **Flatpak** (recommended) | [`Pickit.flatpak`](https://github.com/dengo07/pickit/releases/latest/download/Pickit.flatpak) | Double-click the file, or run `flatpak install --user Pickit.flatpak` |
+| **AppImage** | [`Pickit-x86_64.AppImage`](https://github.com/dengo07/pickit/releases/latest/download/Pickit-x86_64.AppImage) | `chmod +x Pickit-x86_64.AppImage && ./Pickit-x86_64.AppImage` (it adds itself to your app menu) |
 
 - **Flatpak** works on any distro with Flatpak. It's preinstalled on Linux Mint, Fedora, Pop!_OS, Zorin, elementary and Steam Deck; on Ubuntu or Debian, run `sudo apt install flatpak` first.
 - **AppImage** needs glibc 2.39 or newer: Ubuntu 24.04+, Mint 22+, Fedora 40+, Debian 13+, Arch, openSUSE Tumbleweed.
@@ -74,7 +74,7 @@ pickit list                 list your widgets
 pickit run | stop           start or stop the desktop daemon (normally automatic)
 ```
 
-For the Flatpak, use `flatpak run io.github.dengobey.Pickit <command>`.
+For the Flatpak, use `flatpak run io.github.dengo07.Pickit <command>`.
 
 ## How it works
 
@@ -138,7 +138,7 @@ Run from source on Debian, Ubuntu or Mint:
 
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
-git clone https://github.com/dengobey/pickit && cd pickit
+git clone https://github.com/dengo07/pickit && cd pickit
 python3 -m pickit            # optional: ./install.sh adds a menu entry
 pip install anthropic        # only needed for the Anthropic API backend
 ```

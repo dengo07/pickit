@@ -1,6 +1,6 @@
 # Release builds. Outputs go to dist/.
-FLATPAK_MANIFEST := packaging/flatpak/io.github.dengobey.Pickit.yml
-APP_ID := io.github.dengobey.Pickit
+FLATPAK_MANIFEST := packaging/flatpak/io.github.dengo07.Pickit.yml
+APP_ID := io.github.dengo07.Pickit
 
 .PHONY: all flatpak appimage clean
 

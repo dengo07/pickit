@@ -15,5 +15,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengobey/pickit/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/dengobey/pickit/releases/tag/v1.0.0
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/dengo07/pickit/releases/tag/v1.0.0

@@ -1,4 +1,4 @@
-app-id: io.github.dengobey.Pickit
+app-id: io.github.dengo07.Pickit
 runtime: org.gnome.Platform
 runtime-version: '51'
 sdk: org.gnome.Sdk
@@ -27,9 +27,9 @@ modules:
       - mkdir -p /app/share/pickit
       - cp -r pickit /app/share/pickit/
       - install -Dm755 pickit.sh /app/bin/pickit
-      - install -Dm644 pickit/data/io.github.dengobey.Pickit.desktop -t /app/share/applications
-      - install -Dm644 pickit/data/io.github.dengobey.Pickit.svg -t /app/share/icons/hicolor/scalable/apps
-      - install -Dm644 pickit/data/io.github.dengobey.Pickit.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 pickit/data/io.github.dengo07.Pickit.desktop -t /app/share/applications
+      - install -Dm644 pickit/data/io.github.dengo07.Pickit.svg -t /app/share/icons/hicolor/scalable/apps
+      - install -Dm644 pickit/data/io.github.dengo07.Pickit.metainfo.xml -t /app/share/metainfo
     sources:
       - type: dir
         path: ../..

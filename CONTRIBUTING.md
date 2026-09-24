@@ -4,7 +4,7 @@ Thanks for helping. Bug reports, widget ideas, desktop-compatibility reports and
 
 ## Reporting bugs
 
-Please [open an issue](https://github.com/dengobey/pickit/issues/new/choose) and include:
+Please [open an issue](https://github.com/dengo07/pickit/issues/new/choose) and include:
 
 - How you installed Pickit (Flatpak, AppImage or source) and the version (`pickit --version`)
 - Your distro, desktop environment and session type (`echo $XDG_SESSION_TYPE`)
@@ -17,7 +17,7 @@ Please [open an issue](https://github.com/dengobey/pickit/issues/new/choose) and
 
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
-git clone https://github.com/dengobey/pickit && cd pickit
+git clone https://github.com/dengo07/pickit && cd pickit
 python3 -m venv --system-site-packages .venv && . .venv/bin/activate   # system-site for PyGObject
 pip install -e ".[api,dev]"
 pickit
@@ -43,7 +43,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the maker, the daemon a
 
 ## Releasing (maintainers)
 
-1. Bump `__version__` in `pickit/__init__.py` and add a `<release>` to `pickit/data/io.github.dengobey.Pickit.metainfo.xml`.
+1. Bump `__version__` in `pickit/__init__.py` and add a `<release>` to `pickit/data/io.github.dengo07.Pickit.metainfo.xml`.
 2. Update `CHANGELOG.md`.
 3. Tag and push: `git tag v1.2.3 && git push origin v1.2.3`. The release workflow builds and attaches `Pickit.flatpak` and `Pickit-x86_64.AppImage`.
 

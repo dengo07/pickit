@@ -3,7 +3,7 @@
 # (Not needed for the Flatpak or AppImage releases.)
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_ID=io.github.dengobey.Pickit
+APP_ID=io.github.dengo07.Pickit
 SHARE="${XDG_DATA_HOME:-$HOME/.local/share}"
 
 python3 -c "import gi; gi.require_version('Gtk','3.0'); gi.require_version('WebKit2','4.1')" 2>/dev/null || {

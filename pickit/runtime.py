@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-APP_ID = "io.github.dengobey.Pickit"
+APP_ID = "io.github.dengo07.Pickit"
 IN_FLATPAK = os.path.exists("/.flatpak-info")
 APPIMAGE = os.environ.get("APPIMAGE")  # set by the AppImage runtime to the .AppImage path
 PROJECT_DIR = Path(__file__).resolve().parent.parent

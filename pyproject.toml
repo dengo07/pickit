@@ -31,9 +31,9 @@ dev = ["pytest>=8", "ruff>=0.6"]
 pickit = "pickit.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/dengobey/pickit"
-Issues = "https://github.com/dengobey/pickit/issues"
-Changelog = "https://github.com/dengobey/pickit/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/dengo07/pickit"
+Issues = "https://github.com/dengo07/pickit/issues"
+Changelog = "https://github.com/dengo07/pickit/blob/main/CHANGELOG.md"
 
 [tool.setuptools.dynamic]
 version = { attr = "pickit.__version__" }

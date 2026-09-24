@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.dengobey.Pickit</id>
+  <id>io.github.dengo07.Pickit</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Pickit</name>
   <summary>Create desktop widgets by describing them</summary>
-  <developer id="io.github.dengobey">
+  <developer id="io.github.dengo07">
     <name>Deniz Ural</name>
   </developer>
   <description>
@@ -21,14 +21,14 @@
       <li>Works with your Claude Code login or an Anthropic API key</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.dengobey.Pickit.desktop</launchable>
-  <url type="homepage">https://github.com/dengobey/pickit</url>
-  <url type="bugtracker">https://github.com/dengobey/pickit/issues</url>
-  <url type="vcs-browser">https://github.com/dengobey/pickit</url>
+  <launchable type="desktop-id">io.github.dengo07.Pickit.desktop</launchable>
+  <url type="homepage">https://github.com/dengo07/pickit</url>
+  <url type="bugtracker">https://github.com/dengo07/pickit/issues</url>
+  <url type="vcs-browser">https://github.com/dengo07/pickit</url>
   <screenshots>
     <screenshot type="default">
       <caption>Editing a widget with a live preview</caption>
-      <image>https://raw.githubusercontent.com/dengobey/pickit/main/docs/screenshots/maker.png</image>
+      <image>https://raw.githubusercontent.com/dengo07/pickit/main/docs/screenshots/maker.png</image>
     </screenshot>
   </screenshots>
   <categories>

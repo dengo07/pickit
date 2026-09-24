@@ -19,7 +19,7 @@ U="$APPDIR/usr"
 TRIPLET=x86_64-linux-gnu
 SYSLIB=/usr/lib/$TRIPLET
 L="$U/lib/$TRIPLET"
-APP_ID=io.github.dengobey.Pickit
+APP_ID=io.github.dengo07.Pickit
 PYVER=$(python3 -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
 DATA="$ROOT/pickit/data"
 
