@@ -31,10 +31,23 @@ Pickit uses Claude to turn your description into a working widget, then pins it 
 
 ## Install
 
-| | Download | Install |
-|---|---|---|
-| **Flatpak** (recommended) | [`Pickit.flatpak`](https://github.com/dengo07/pickit/releases/latest/download/Pickit.flatpak) | Double-click the file, or run `flatpak install --user Pickit.flatpak` |
-| **AppImage** | [`Pickit-x86_64.AppImage`](https://github.com/dengo07/pickit/releases/latest/download/Pickit-x86_64.AppImage) | `chmod +x Pickit-x86_64.AppImage && ./Pickit-x86_64.AppImage` (it adds itself to your app menu) |
+**[⬇ Install Pickit](https://dengo07.github.io/pickit/Pickit.flatpakref)**: open the downloaded file, and your software center (Linux Mint Software Manager, GNOME Software or KDE Discover) shows an **Install** button. Updates then arrive through your normal software updates.
+
+Or from a terminal:
+
+```bash
+flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref
+```
+
+<details>
+<summary><b>Other options: AppImage or offline bundle</b></summary>
+
+| Package | Install |
+|---|---|
+| [`Pickit-x86_64.AppImage`](https://github.com/dengo07/pickit/releases/latest/download/Pickit-x86_64.AppImage) | A single file, nothing installed. Browsers save downloads as non-executable, so first right-click → **Properties** → **Permissions** → **Allow executing file as program**, then double-click it. From a terminal: `chmod +x Pickit-x86_64.AppImage && ./Pickit-x86_64.AppImage`. It adds itself to your app menu. |
+| [`Pickit.flatpak`](https://github.com/dengo07/pickit/releases/latest/download/Pickit.flatpak) | An offline bundle, for installing without internet access: `flatpak install --user Pickit.flatpak`. It doesn't update itself. |
+
+</details>
 
 - **Flatpak** works on any distro with Flatpak. It's preinstalled on Linux Mint, Fedora, Pop!_OS, Zorin, elementary and Steam Deck; on Ubuntu or Debian, run `sudo apt install flatpak` first.
 - **AppImage** needs glibc 2.39 or newer: Ubuntu 24.04+, Mint 22+, Fedora 40+, Debian 13+, Arch, openSUSE Tumbleweed.

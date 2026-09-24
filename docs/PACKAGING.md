@@ -1,6 +1,23 @@
 # Packaging
 
-Releases ship two self-contained packages. Pushing a `v*` tag builds both and attaches them to the GitHub Release ([`.github/workflows/release.yml`](../.github/workflows/release.yml)).
+Releases ship two self-contained packages. Pushing a `v*` tag triggers [`.github/workflows/release.yml`](../.github/workflows/release.yml), which:
+
+1. builds the AppImage and the Flatpak,
+2. publishes a **Flatpak repository on GitHub Pages** at `https://dengo07.github.io/pickit/`, with a landing page, `Pickit.flatpakref` and `pickit.flatpakrepo`,
+3. creates the GitHub Release with `Pickit-x86_64.AppImage`, `Pickit.flatpakref` and the offline bundle `Pickit.flatpak`.
+
+## One-time repository setup
+
+GitHub Pages must be switched on before the first release, or the `pages` job fails:
+
+1. **Settings → Pages → Build and deployment → Source:** choose **GitHub Actions**.
+2. **Settings → Environments → `github-pages` → Deployment branches and tags:** add a rule of type **Tag** with the pattern `v*`. By default only `main` may deploy, and releases deploy from a tag.
+
+## Why a Flatpak repository
+
+Most desktops don't open a `.flatpak` bundle on double-click (Linux Mint's Software Manager doesn't), and bundles never update. A `.flatpakref` points at a repository instead: software centers open it with an Install button, and `flatpak update` or the system updater picks up new releases.
+
+Each release replaces the Pages site with a fresh repository containing only the newest build; clients update from whatever commit they have. The repository is currently **not GPG-signed**, so integrity relies on HTTPS and GitHub. Flatpak and software centers accept it and label it "unverified". To sign it, generate a key, store it as an Actions secret, pass `gpg-sign` to the builder step and add `GPGKey=` (base64) to both site files.
 
 ## Flatpak: `make flatpak` → `dist/Pickit.flatpak`
 

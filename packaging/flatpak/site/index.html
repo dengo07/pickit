@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pickit</title>
+  <meta name="description" content="Describe a desktop widget in plain words and get it on your Linux desktop.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --bg: #f6f5fb; --fg: #1d1b2a; --muted: #5d5a70; --card: #ffffff; --line: #e3e1ee;
+      --accent: #4f46e5; --accent-fg: #ffffff; --code: #efedf7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #14131c; --fg: #ecebf3; --muted: #a3a0b8; --card: #1d1b28; --line: #2e2b3d;
+        --accent: #7c74ff; --accent-fg: #0f0e16; --code: #262336;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Ubuntu, Cantarell, sans-serif;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 56px 16px 72px; }
+    header { text-align: center; }
+    header img { width: 88px; height: 88px; }
+    h1 { font-size: 2.4rem; margin: 12px 0 4px; letter-spacing: -0.02em; }
+    .tagline { color: var(--muted); font-size: 1.15rem; margin: 0 0 28px; }
+    .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600;
+      text-decoration: none; border: 1px solid var(--line); color: var(--fg); background: var(--card);
+    }
+    .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .shot { display: block; width: 100%; margin: 40px 0 8px; border-radius: 12px; border: 1px solid var(--line); }
+    section { margin-top: 40px; }
+    h2 { font-size: 1.25rem; margin: 0 0 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+    .card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    .card p { margin: 6px 0; color: var(--muted); }
+    code, pre { background: var(--code); border-radius: 6px; font: 0.9em ui-monospace, "DejaVu Sans Mono", monospace; }
+    code { padding: 2px 6px; }
+    pre { padding: 12px 14px; overflow-x: auto; margin: 8px 0 0; }
+    footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.svg" alt="">
+    <h1>Pickit</h1>
+    <p class="tagline">Describe a desktop widget in plain words, and get it on your Linux desktop.</p>
+    <div class="actions">
+      <a class="btn primary" href="Pickit.flatpakref">Install with Flatpak</a>
+      <a class="btn" href="https://github.com/dengo07/pickit/releases/latest">AppImage and other downloads</a>
+    </div>
+  </header>
+
+  <img class="shot" src="maker.png" alt="Pickit editing a circular battery widget">
+
+  <section>
+    <h2>Install</h2>
+    <div class="card">
+      <h3>Flatpak (recommended, with automatic updates)</h3>
+      <p>Click <strong>Install with Flatpak</strong> above and open the downloaded file. Your software center
+        (Linux Mint Software Manager, GNOME Software or KDE Discover) opens with an <strong>Install</strong> button.
+        Updates then arrive through your normal software updates.</p>
+      <p>Or from a terminal:</p>
+      <pre>flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref</pre>
+      <p>On Ubuntu or Debian, install Flatpak first: <code>sudo apt install flatpak</code>.</p>
+    </div>
+    <div class="card">
+      <h3>AppImage (a single file, no installation)</h3>
+      <p>Download <code>Pickit-x86_64.AppImage</code> from the
+        <a href="https://github.com/dengo07/pickit/releases/latest">latest release</a>, then allow it to run:
+        right-click → <em>Properties</em> → <em>Permissions</em> → <em>Allow executing file as program</em>.
+        Now double-click it. Or from a terminal:</p>
+      <pre>chmod +x Pickit-x86_64.AppImage && ./Pickit-x86_64.AppImage</pre>
+    </div>
+  </section>
+
+  <footer>
+    Open source under the MIT license · <a href="https://github.com/dengo07/pickit">Source code on GitHub</a>
+  </footer>
+</main>
+</body>
+</html>

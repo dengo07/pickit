@@ -38,13 +38,42 @@ jobs:
           bundle: Pickit.flatpak
           cache-key: flatpak-builder-${{ github.sha }}
           upload-artifact: false
+      # The builder leaves an OSTree repository in ./repo. Published on GitHub Pages, it
+      # lets Pickit.flatpakref install with a double-click, and users get updates.
+      - name: Assemble the GitHub Pages site (Flatpak repository + landing page)
+        run: |
+          flatpak build-update-repo --prune --generate-static-deltas repo
+          mkdir -p site
+          cp -r packaging/flatpak/site/. site/
+          cp pickit/data/io.github.dengo07.Pickit.svg site/icon.svg
+          cp docs/screenshots/maker.png site/maker.png
+          mv repo site/repo
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
       - uses: actions/upload-artifact@v7
         with:
           name: flatpak
-          path: Pickit.flatpak
+          path: |
+            Pickit.flatpak
+            packaging/flatpak/site/Pickit.flatpakref
+
+  pages:
+    needs: flatpak
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
 
   publish:
-    needs: [appimage, flatpak]
+    needs: [appimage, flatpak, pages]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
@@ -59,4 +88,11 @@ jobs:
           files: |
             artifacts/Pickit-x86_64.AppImage
             artifacts/Pickit.flatpak
+            artifacts/**/Pickit.flatpakref
           generate_release_notes: true
+          body: |
+            ## Install
+
+            - **Flatpak (recommended):** download **Pickit.flatpakref** below and open it. Your software center opens with an Install button, and updates arrive automatically. Or run `flatpak install --user https://dengo07.github.io/pickit/Pickit.flatpakref`
+            - **AppImage:** download **Pickit-x86_64.AppImage**, then right-click → Properties → Permissions → *Allow executing file as program*, and double-click it.
+            - `Pickit.flatpak` is an offline bundle, for installing without internet access: `flatpak install --user Pickit.flatpak`

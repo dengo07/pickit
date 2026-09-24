@@ -1,0 +1,11 @@
+[Flatpak Ref]
+Title=Pickit
+Name=io.github.dengo07.Pickit
+Branch=master
+Url=https://dengo07.github.io/pickit/repo/
+SuggestRemoteName=pickit
+Comment=Describe a desktop widget in plain words and get it on your desktop
+Homepage=https://github.com/dengo07/pickit
+Icon=https://dengo07.github.io/pickit/icon.svg
+RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false
