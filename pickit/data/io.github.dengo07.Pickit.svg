@@ -1,23 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#4f46e5"/>
-      <stop offset="1" stop-color="#db2777"/>
-    </linearGradient>
-    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.8"/>
-    </linearGradient>
-  </defs>
-  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bg)"/>
-  <rect x="22" y="24" width="50" height="38" rx="9" fill="url(#card)"/>
-  <rect x="22" y="68" width="50" height="36" rx="9" fill="url(#card)" opacity="0.85"/>
-  <rect x="78" y="24" width="28" height="80" rx="9" fill="url(#card)" opacity="0.9"/>
-  <circle cx="47" cy="43" r="11" fill="none" stroke="#4f46e5" stroke-width="4"/>
-  <path d="M47 36v7l5 3" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
-  <rect x="30" y="80" width="34" height="5" rx="2.5" fill="#db2777"/>
-  <rect x="30" y="90" width="22" height="5" rx="2.5" fill="#4f46e5"/>
-  <rect x="86" y="70" width="12" height="26" rx="3" fill="#db2777"/>
-  <rect x="86" y="50" width="12" height="16" rx="3" fill="#4f46e5" opacity="0.7"/>
-  <path d="M104 12l3.5 8.5L116 24l-8.5 3.5L104 36l-3.5-8.5L92 24l8.5-3.5z" fill="#fde68a"/>
+  <!-- tile -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="#1e1f22"/>
+  <rect x="8.75" y="8.75" width="110.5" height="110.5" rx="27.25" fill="none" stroke="#ffffff" stroke-opacity="0.13" stroke-width="1.5"/>
+
+  <!-- ring gauge widget, with the spark (made by describing it) at its center -->
+  <circle cx="45" cy="50" r="19" fill="none" stroke="#3a3c41" stroke-width="9"/>
+  <path d="M45 31 A19 19 0 1 1 26 50" fill="none" stroke="#f2a33a" stroke-width="9" stroke-linecap="round"/>
+  <path d="M45 40 l2.6 6.9 L54.5 50 l-6.9 2.6 L45 59.5 l-2.6-6.9 L35.5 50 l6.9-2.6 z" fill="#f2ece2"/>
+
+  <!-- small graph widget -->
+  <rect x="76" y="30" width="32" height="40" rx="8" fill="#2c2e32"/>
+  <path d="M82 58 L88 50 L93 54 L102 42" fill="none" stroke="#f2ece2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- progress bar widget -->
+  <rect x="20" y="81" width="88" height="24" rx="8" fill="#2c2e32"/>
+  <rect x="28" y="90" width="72" height="6" rx="3" fill="#3a3c41"/>
+  <rect x="28" y="90" width="46" height="6" rx="3" fill="#f2a33a"/>
 </svg>

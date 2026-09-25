@@ -11,7 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The command approval dialog showed commands in a serif math font on systems where the generic `monospace` font resolves oddly (for example "DejaVu Math TeX Gyre" on Linux Mint). It now asks for common monospace fonts by name.
 
 ### Changed
+- New app icon: a charcoal tile with three miniature widgets (an amber ring gauge with a spark at its center, a graph tile and a progress bar), replacing the purple-pink gradient.
 - The widget preview area in the Pickit window uses a neutral slate background instead of a purple-grey one.
+- Refreshed the README and software-center screenshot.
 
 ## [1.1.0] - 2026-09-24
 
