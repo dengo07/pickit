@@ -11,7 +11,7 @@
   <description>
     <p>
       Describe a widget in plain language, such as a clock, system meters, weather or a
-      now-playing panel. Pickit uses Claude to build it and pins it to your desktop.
+      now-playing panel. Pickit uses an AI model to build it and pins it to your desktop.
     </p>
     <ul>
       <li>Widgets sit on the desktop below your windows, on every workspace</li>
@@ -19,7 +19,7 @@
       <li>Refine any widget by asking for changes, such as "make it bigger and blue"</li>
       <li>Live data comes from shell commands that you review and approve first</li>
       <li>Light on memory: most widgets are drawn natively with GTK</li>
-      <li>Works with your Claude Code login or an Anthropic API key</li>
+      <li>Works with Claude (your Claude Code login or an API key), a free local model through Ollama, or any model on OpenRouter</li>
     </ul>
   </description>
   <launchable type="desktop-id">io.github.dengo07.Pickit.desktop</launchable>
@@ -47,6 +47,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.2.0" date="2026-09-25">
+      <description>
+        <p>Choose your AI: besides Claude, Pickit now works with local models through Ollama (free, and your prompts stay on your computer) and with any model on OpenRouter. Settings shows the options for each backend and can test the connection.</p>
+      </description>
+    </release>
     <release version="1.1.1" date="2026-09-25">
       <description>
         <p>A new app icon, a neutral background for the widget preview, and a proper monospace font for commands in the approval dialog.</p>

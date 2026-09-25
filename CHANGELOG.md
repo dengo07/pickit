@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-25
+
+### Added
+- **Ollama backend.** Generate widgets with a local model: free, and your prompts never leave your computer. Settings lists the installed models; Pickit asks Ollama for JSON output and a context window large enough for its instructions (at least 16k tokens, more when refining a big widget), turns off "thinking" (it made local models write smaller widgets in the same time), and gives local models a second repair attempt. Tested with `qwen3.5:9b` on an 8 GB laptop GPU: clock, battery, system meters, weather and now-playing widgets all came out valid on the first try, in 7–70 seconds each.
+- **OpenRouter backend.** Use any model on OpenRouter with one key, including free ones. Pickit uses JSON mode when the model supports it and falls back gracefully when it doesn't. Busy free models (rate limits, overloaded providers) are retried twice, and if they're still busy you see OpenRouter's reason. Tested with the free `nemotron-3-ultra-550b-a55b` and `dots-3-note-preview` models: all ten widgets came out valid, a few after one repair.
+- **Test connection** in Settings checks the selected backend: that Claude Code is installed, that an API key works (and how much OpenRouter credit is left), or that Ollama runs and has the chosen model.
+- Settings shows only the options of the selected backend, with setup help for each. API key fields have an eye button to check what you pasted.
+
+### Changed
+- **Automatic** backend order: Claude Code, then an Anthropic API key, then Ollama with a downloaded model, then an OpenRouter key. If none is set up, Pickit says so and lists the options instead of failing on a missing Anthropic key.
+- The AI instructions now warn against piping data into a heredoc script (`curl … | python3 - <<'EOF'`), which silently leaves the script without input. A model made this mistake in testing.
+- HTTPS requests from the AppImage find the system's certificates on Fedora, openSUSE and other distros whose certificate paths differ from Ubuntu's.
+
 ## [1.1.1] - 2026-09-25
 
 ### Fixed
@@ -65,7 +78,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/dengo07/pickit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dengo07/pickit/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dengo07/pickit/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/dengo07/pickit/compare/v1.0.3...v1.0.4

@@ -50,3 +50,15 @@ print("ok: HTML engine still works")
 for w in windows:
     w.destroy()
 Gtk.main_iteration_do(False)
+
+from pickit import app, config  # noqa: E402
+
+dlg = app.SettingsDialog(None, {**config.load(), "ollama_url": "http://127.0.0.1:9"})
+for backend_id, *_ in app.BACKENDS:
+    dlg.backend.set_active_id(backend_id)
+    assert dlg.pages.get_visible_child_name() == backend_id
+assert set(dlg.values()) <= set(config.DEFAULTS), "settings dialog writes an unknown config key"
+GLib.timeout_add(500, loop.quit)
+loop.run()  # the Ollama page's model lookup fails quietly against a closed port
+dlg.destroy()
+print("ok: settings dialog pages")

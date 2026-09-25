@@ -13,7 +13,7 @@ Both are unique `Gtk.Application`s, so launching one that is already running jus
 sequenceDiagram
   participant U as User
   participant M as Maker
-  participant C as Claude (CLI or API)
+  participant C as AI model (Claude, Ollama, OpenRouter)
   participant S as Widget store
   participant D as Desktop daemon
   U->>M: "a CPU meter, bottom-right"
@@ -39,7 +39,7 @@ sequenceDiagram
 | `html_view.py` | `WidgetView`: the HTML engine's WebKit view, with the JS bridge, a shared web process, crash reload and watchdog. Only imported when an HTML widget exists. |
 | `bridge.py` | The `window.widget` JS API and `CommandRunner`, which runs approved commands on their intervals in threads. |
 | `generator.py` | Builds the prompt, extracts and validates the JSON spec, and retries once with the error fed back. |
-| `backends.py` | `ClaudeCLIBackend` (`claude -p --output-format json --tools ""`) and `AnthropicBackend` (Python SDK, streaming, adaptive thinking). |
+| `backends.py` | `ClaudeCLIBackend` (`claude -p --output-format json --tools ""`), `AnthropicBackend` (Python SDK, streaming, adaptive thinking), `OllamaBackend` (`/api/chat` with JSON output, thinking off, and a context of 16k tokens or more) and `OpenRouterBackend` (OpenAI-style chat completions, JSON mode when the model supports it). The last two use only the standard library. `resolve_auto()` picks the first backend that's set up. |
 | `store.py` | Widget files, the change stamp, approval hashes and content signatures. |
 | `runtime.py` | Detects source, Flatpak or AppImage; handles host command wrapping (`flatpak-spawn --host`), self-launching and locating the Claude CLI. |
 | `autostart.py` | Launches the daemon detached, writes the XDG autostart entry, and adds the AppImage's menu entry. |
@@ -53,6 +53,8 @@ sequenceDiagram
 **Dock window type plus keep-below.** On EWMH window managers this puts a window in the "bottom" layer: above the desktop background and icons, below every normal window. Show Desktop doesn't hide it, and clicking it never raises it. A `DESKTOP`-type window was rejected because it gets buried under Nemo, Nautilus or Caja's desktop window as soon as the desktop is clicked. The trade-off: window managers don't move dock windows, so Pickit implements dragging itself (polling the pointer while the button is held), and dock windows don't take keyboard focus.
 
 **Files as the IPC channel.** Every change is written to the store and then signalled by atomically replacing `~/.local/share/pickit/changed`. The daemon watches that one file and diffs a content signature per widget that ignores position. There is no D-Bus API to keep in sync, and hand-edited widgets work too.
+
+**Any model, same contract.** Every backend gets the same system prompt and must return the same JSON spec, which the generator validates. Nothing a backend returns is trusted: a bad spec gets fed back as an error for a repair attempt (two for Ollama, since small local models slip more often), and commands still need approval. Ollama's default context window (often 4k tokens) would silently cut off Pickit's ~8k-token instructions, so requests set `num_ctx` to at least 16k, more when refining a large widget. They also turn off "thinking": with `qwen3.5:9b` it took as long and produced much smaller widgets.
 
 **Approval by hash.** A widget's `approved_hash` is the SHA-256 of its canonicalised `commands`. Any change to a command, including one made by the model during a refine, invalidates the approval.
 

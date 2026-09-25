@@ -9,9 +9,10 @@ Pickit runs AI-generated code on your desktop, so its safety model is worth unde
 - **Commands run as your user**, through `bash -c`, with a 20-second timeout. Treat approving a command exactly like pasting it into your terminal.
 - **Network:** widget pages can load resources from the internet like any web page. Cross-origin `fetch()` is blocked by CORS, which is why data comes through approved commands instead.
 - **Flatpak:** the Flatpak needs permission to run commands on the host (`org.freedesktop.Flatpak`), because running your approved commands there is the app's purpose. The sandbox therefore does not isolate approved commands.
-- **API keys** are stored in `~/.config/pickit/config.json` with mode `0600`. You can use the `ANTHROPIC_API_KEY` environment variable instead.
+- **API keys** are stored in `~/.config/pickit/config.json` with mode `0600`. You can use the `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` environment variables instead.
+- **Where your prompts go:** to Anthropic with Claude Code or the Anthropic API; to OpenRouter **and the provider running the model you picked** with OpenRouter (check that provider's data policy, especially for free models); nowhere with Ollama, which runs on your computer. The prompt contains your widget description and, when refining, the widget's current files and commands.
 
-Read commands before approving them. A generated command should be short, read-only and obviously related to the widget. Reject anything that deletes files, uses `sudo`, downloads and runs scripts, or sends data somewhere unexpected.
+Read commands before approving them, whichever model wrote them. Small local models make more mistakes. A generated command should be short, read-only and obviously related to the widget. Reject anything that deletes files, uses `sudo`, downloads and runs scripts, or sends data somewhere unexpected.
 
 ## Reporting a vulnerability
 

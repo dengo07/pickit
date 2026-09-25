@@ -9,14 +9,21 @@ CONFIG_DIR = runtime.CONFIG_HOME / "pickit"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULTS = {
-    # "claude-cli" uses the installed `claude` binary; "anthropic" uses the Python SDK.
-    # "auto" picks the CLI when it's installed, else the API.
+    # "claude-cli" (the `claude` binary), "anthropic" (Python SDK), "ollama", "openrouter", or
+    # "auto": the first that's set up, in that order.
     "backend": "auto",
     # Empty means "whatever the Claude CLI defaults to". Accepts aliases like "sonnet".
     "cli_model": "",
     "api_model": "claude-opus-5",
     # Optional; if empty the SDK falls back to ANTHROPIC_API_KEY / `ant auth login`.
     "anthropic_api_key": "",
+    # Ollama: a local model server. An empty model means the largest installed one.
+    "ollama_url": "",  # empty: $OLLAMA_HOST, else http://localhost:11434
+    "ollama_model": "",
+    "ollama_context": 16384,  # minimum context window in tokens; Pickit's instructions alone are ~8k
+    # OpenRouter: any hosted model through one key (falls back to OPENROUTER_API_KEY).
+    "openrouter_api_key": "",
+    "openrouter_model": "anthropic/claude-sonnet-5",
     # Start the desktop daemon at login so widgets survive reboots.
     "autostart": True,
     # Default engine in the maker: "auto" (native whenever possible), "native" or "html".

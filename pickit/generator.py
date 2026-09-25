@@ -109,14 +109,17 @@ def generate(backend, prompt: str, current: dict | None = None, engine: str = "a
         user = f"Engine: {engine}\n\nCreate this widget: {prompt}"
     messages = [{"role": "user", "content": user}]
 
-    reply = backend.complete(SYSTEM_PROMPT, messages)
-    try:
-        return validate(_extract_json(reply), engine)
-    except SpecError as e:
-        # One repair attempt with the error fed back to the model.
-        messages += [
-            {"role": "assistant", "content": reply},
-            {"role": "user", "content": f"That output was not usable: {e}\n"
-                                        "Reply again with ONLY the complete, valid JSON object."},
-        ]
-        return validate(_extract_json(backend.complete(SYSTEM_PROMPT, messages)), engine)
+    # Repair attempts feed the error back to the model (small local models get two).
+    repairs = getattr(backend, "repair_attempts", 1)
+    for attempt in range(repairs + 1):
+        reply = backend.complete(SYSTEM_PROMPT, messages)
+        try:
+            return validate(_extract_json(reply), engine)
+        except SpecError as e:
+            if attempt == repairs:
+                raise
+            messages += [
+                {"role": "assistant", "content": reply},
+                {"role": "user", "content": f"That output was not usable: {e}\n"
+                                            "Reply again with ONLY the complete, valid JSON object."},
+            ]

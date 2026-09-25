@@ -6,12 +6,14 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
 PREVIEW_BG = "#3b3f45"  # a neutral mid-tone "wallpaper" that shows both light and dark widgets well
+# Named explicitly: the "monospace" alias resolves to a serif font on some systems.
+MONO_FONTS = "DejaVu Sans Mono,Liberation Mono,Noto Sans Mono,JetBrains Mono,monospace"
 
 CSS = b"""
 #preview-bg { background-color: %s; }
 .dim { opacity: 0.7; }
-.cmd { font-family: "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "JetBrains Mono", monospace; }
-""" % PREVIEW_BG.encode()
+.cmd { font-family: %s; }
+""" % (PREVIEW_BG.encode(), ", ".join(f'"{f}"' if " " in f else f for f in MONO_FONTS.split(",")).encode())
 
 
 def install_css():

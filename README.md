@@ -18,7 +18,7 @@
 > *"A translucent clock with CPU and RAM bars in the bottom-right corner."*
 > Press **Generate**, and a few seconds later it's on your desktop.
 
-Pickit uses Claude to turn your description into a working widget, then pins it to your desktop like a native desklet. You can refine a widget by asking for changes ("make it bigger and blue") until it looks right.
+Pickit uses an AI model to turn your description into a working widget, then pins it to your desktop like a native desklet. Use Claude, a free local model through Ollama, or any model on OpenRouter. You can refine a widget by asking for changes ("make it bigger and blue") until it looks right.
 
 ## Features
 
@@ -26,7 +26,8 @@ Pickit uses Claude to turn your description into a working widget, then pins it 
 - **Part of the desktop.** Widgets sit above the wallpaper and below every window. Show Desktop doesn't hide them, they appear on every workspace, and they stay out of the taskbar and Alt+Tab.
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.
 - **Live data, with approval.** Widgets get data from shell commands that **you approve before they run**. Change a command and Pickit asks again.
-- **No setup.** Download a Flatpak or AppImage; there are no libraries to install. Pickit uses your [Claude Code](https://claude.com/claude-code) login if you have one, or an Anthropic API key.
+- **No setup.** Download a Flatpak or AppImage; there are no libraries to install.
+- **Your choice of AI.** Your [Claude Code](https://claude.com/claude-code) login, an Anthropic API key, a local model with [Ollama](https://ollama.com) (free, and nothing leaves your computer), or any model on [OpenRouter](https://openrouter.ai).
 - **Light on memory.** Most widgets are drawn natively with GTK: five typical widgets use about 25 MB in total. When a design needs more freedom (animation, SVG art), Pickit switches to HTML/CSS for that widget.
 - **Hackable.** Every widget is a small JSON or HTML file you can open and edit yourself.
 
@@ -57,12 +58,18 @@ All versions share the same widgets and settings, so you can switch between them
 
 The Flatpak installs system-wide, like the apps from your software center, so it **reuses the runtimes and graphics drivers you already have**. The first time, it downloads anything missing: the GNOME runtime (about 400 MB, shared with every GNOME Flatpak app) and, on NVIDIA systems, Flatpak's copy of your driver version. Later updates only download Pickit itself (about 5 MB).
 
-### Connect to Claude
+### Connect an AI model
 
-When you first press **Generate**, Pickit picks one of these automatically:
+Pickit needs one of these. With the backend set to **Automatic**, it uses the first one it finds, in this order:
 
-1. **Claude Code**: if the `claude` command is installed and logged in, Pickit uses it. No key needed.
-2. **Anthropic API**: otherwise, enter an API key from [console.anthropic.com](https://console.anthropic.com) in **Settings**.
+| Backend | Setup | Notes |
+|---|---|---|
+| **Claude Code** | Install the `claude` command and log in. | Uses your Claude subscription; no key needed. |
+| **Anthropic API** | Add a key from [console.anthropic.com](https://console.anthropic.com) in **Settings**. | Pay per use. |
+| **Ollama** | Install [Ollama](https://ollama.com), then download a model: `ollama pull qwen3.5:9b`. | Free and private: the model runs on your computer. A graphics card with 8 GB of memory runs 8–9B models well; bigger models write better widgets. |
+| **OpenRouter** | Add a key from [openrouter.ai/keys](https://openrouter.ai/keys) in **Settings** and pick a model. | Hundreds of models through one key, including free ones (their IDs end in `:free`). |
+
+Open **Settings** (the gear button) to choose a backend and model, and press **Test connection** to check it. You can also switch backends from the menu next to the gear.
 
 ## Usage
 
@@ -97,8 +104,8 @@ For the Flatpak, use `flatpak run io.github.dengo07.Pickit <command>`.
 ```mermaid
 flowchart LR
   you([Your description]) --> maker[Pickit window]
-  maker -- prompt --> claude[(Claude)]
-  claude -- "widget spec (native UI or HTML)" --> maker
+  maker -- prompt --> ai[("AI model: Claude, Ollama or OpenRouter")]
+  ai -- "widget spec (native UI or HTML)" --> maker
   maker -- "saves widget files" --> store[("~/.local/share/pickit")]
   store -- "file watch" --> daemon[Desktop daemon]
   daemon --> w1[Widget window]
@@ -131,9 +138,15 @@ Right-click where the widget should be and choose **Reload**. If it's still blan
 </details>
 
 <details>
-<summary><b>"Connect Pickit to Claude"</b></summary>
+<summary><b>"Connect Pickit to an AI model"</b></summary>
 
-Pickit found neither the `claude` command nor an API key. Install and log in to Claude Code, or add an Anthropic API key in **Settings**.
+Pickit found no AI backend: no `claude` command, no API key, and no Ollama with a downloaded model. Set one up (see [Connect an AI model](#connect-an-ai-model)), then press **Test connection** in **Settings**.
+</details>
+
+<details>
+<summary><b>A local model makes broken or plain widgets</b></summary>
+
+Small models follow Pickit's widget format less reliably. Pickit retries twice with the error, but a bigger model (for example `qwen3.5:27b` if you have the memory) or a hosted one through OpenRouter works better. Generation on a CPU without a graphics card can take several minutes.
 </details>
 
 <details>

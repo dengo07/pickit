@@ -4,6 +4,7 @@ The widgets themselves live in the separate desktop daemon (daemon.py), so
 closing this window never removes them from the desktop.
 """
 
+import os
 import threading
 
 import gi
@@ -13,6 +14,7 @@ from gi.repository import Gio, GLib, Gtk, Pango  # noqa: E402
 
 from . import autostart, backends, config, generator, runtime, store  # noqa: E402
 from .dialogs import (  # noqa: E402
+    MONO_FONTS,
     PREVIEW_BG,  # noqa: E402
     approval_dialog,
     confirm,  # noqa: E402
@@ -33,46 +35,206 @@ EXAMPLES = [
 ]
 
 
+BACKENDS = [  # id, header label, settings label
+    ("auto", "Auto", "Automatic (the first one that's set up)"),
+    ("claude-cli", "Claude CLI", "Claude Code CLI (uses your Claude login)"),
+    ("anthropic", "Anthropic API", "Anthropic API (API key)"),
+    ("ollama", "Ollama", "Ollama (free, runs on this computer)"),
+    ("openrouter", "OpenRouter", "OpenRouter (hundreds of models, one key)"),
+]
+
+
+def _hint(text):
+    text = text.replace("<tt>", f"<span font_family='{MONO_FONTS}'>").replace("</tt>", "</span>")
+    lbl = label(text, max_width_chars=60)
+    lbl.set_use_markup(True)
+    lbl.get_style_context().add_class("dim-label")
+    return lbl
+
+
+def _secret_entry(value, placeholder):
+    """A password-style entry with an eye icon that shows the text, so a paste can be checked."""
+    entry = Gtk.Entry(text=value, visibility=False, placeholder_text=placeholder)
+    entry.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY, "view-reveal-symbolic")
+    entry.set_icon_tooltip_text(Gtk.EntryIconPosition.SECONDARY, "Show or hide")
+
+    def toggle(e, _pos, _event):
+        e.set_visibility(not e.get_visibility())
+        e.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY,
+                                  "view-conceal-symbolic" if e.get_visibility() else "view-reveal-symbolic")
+    entry.connect("icon-press", toggle)
+    return entry
+
+
+def _model_combo(value, suggestions=(), placeholder=""):
+    combo = Gtk.ComboBoxText.new_with_entry()
+    for s in suggestions:
+        combo.append_text(s)
+    combo.get_child().set_text(value)
+    combo.get_child().set_placeholder_text(placeholder)
+    return combo
+
+
 class SettingsDialog(Gtk.Dialog):
     def __init__(self, parent, cfg: dict):
         super().__init__(title="Settings", transient_for=parent, modal=True)
+        self.cfg = cfg
+        self.alive = True
+        self.connect("destroy", lambda _w: setattr(self, "alive", False))
         self.add_button("Cancel", Gtk.ResponseType.CANCEL)
         self.add_button("Save", Gtk.ResponseType.OK).get_style_context().add_class("suggested-action")
-        grid = Gtk.Grid(column_spacing=12, row_spacing=10, border_width=16)
-        self.get_content_area().add(grid)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, border_width=16)
+        self.get_content_area().add(box)
 
-        self.backend = Gtk.ComboBoxText()
-        self.backend.append("auto", "Automatic (Claude Code if installed, else API)")
-        self.backend.append("claude-cli", "Claude Code CLI (uses your Claude login)")
-        self.backend.append("anthropic", "Anthropic API (API key)")
-        self.backend.set_active_id(cfg["backend"])
+        self.backend = Gtk.ComboBoxText(hexpand=True)
+        for bid, _short, long in BACKENDS:
+            self.backend.append(bid, long)
+        top = Gtk.Box(spacing=12)
+        top.pack_start(label("AI backend"), False, False, 0)
+        top.pack_start(self.backend, True, True, 0)
+        box.pack_start(top, False, False, 0)
+
+        # One page of settings per backend; all are saved, whichever is selected.
+        self.pages = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vhomogeneous=False)
+        box.pack_start(self.pages, False, False, 0)
+
         self.cli_model = Gtk.Entry(text=cfg["cli_model"], placeholder_text="default (e.g. opus, sonnet)")
         self.api_model = Gtk.Entry(text=cfg["api_model"])
-        self.api_key = Gtk.Entry(text=cfg["anthropic_api_key"], visibility=False,
-                                 placeholder_text="empty = use ANTHROPIC_API_KEY")
+        self.api_key = _secret_entry(cfg["anthropic_api_key"], "empty = use ANTHROPIC_API_KEY")
+        self.ollama_url = Gtk.Entry(text=cfg["ollama_url"],
+                                    placeholder_text=os.environ.get("OLLAMA_HOST") or backends.OLLAMA_URL)
+        self.ollama_model = _model_combo(cfg["ollama_model"], placeholder="the largest installed model")
+        refresh = Gtk.Button.new_from_icon_name("view-refresh-symbolic", Gtk.IconSize.BUTTON)
+        refresh.set_tooltip_text("Reload the installed models")
+        refresh.connect("clicked", lambda _b: self._load_ollama_models())
+        ollama_row = Gtk.Box(spacing=6)
+        ollama_row.pack_start(self.ollama_model, True, True, 0)
+        ollama_row.pack_start(refresh, False, False, 0)
+        self.or_key = _secret_entry(cfg["openrouter_api_key"], "sk-or-…")
+        self.or_model = _model_combo(cfg["openrouter_model"], backends.OPENROUTER_SUGGESTIONS)
+
+        self._page("auto", [], "Pickit uses the first backend that's set up, in this order: Claude Code, an "
+                   "Anthropic API key, Ollama with a downloaded model, then an OpenRouter key.")
+        self._page("claude-cli", [("Model", self.cli_model)],
+                   "Uses the <tt>claude</tt> command and your Claude login, so no key is needed. Get it at "
+                   "<a href='https://claude.com/claude-code'>claude.com/claude-code</a>.")
+        self._page("anthropic", [("Model", self.api_model), ("API key", self.api_key)],
+                   "Create a key at <a href='https://console.anthropic.com'>console.anthropic.com</a>.")
+        self._page("ollama", [("Server", self.ollama_url), ("Model", ollama_row)],
+                   "Free and private: the model runs on this computer. Install Ollama from "
+                   "<a href='https://ollama.com'>ollama.com</a>, then download a model, for example "
+                   f"<tt>ollama pull {backends.OLLAMA_SUGGESTED}</tt>. Bigger models write better widgets; "
+                   "a graphics card with 8 GB of memory runs 8–9B models comfortably.")
+        self._page("openrouter", [("API key", self.or_key), ("Model", self.or_model)],
+                   "One key for models from Anthropic, Google, OpenAI, DeepSeek, Qwen and more. Create it at "
+                   "<a href='https://openrouter.ai/keys'>openrouter.ai/keys</a>. Models ending in "
+                   "<tt>:free</tt> cost nothing but are rate-limited. Your prompts go to OpenRouter and "
+                   "the model's provider.")
+
+        test_row = Gtk.Box(spacing=10)
+        self.test_btn = Gtk.Button(label="Test connection")
+        self.test_btn.connect("clicked", self._on_test)
+        self.test_status = label("", selectable=True)
+        test_row.pack_start(self.test_btn, False, False, 0)
+        test_row.pack_start(self.test_status, True, True, 0)
+        box.pack_start(test_row, False, False, 0)
+
+        box.pack_start(Gtk.Separator(), False, False, 4)
         self.login = Gtk.CheckButton(label="Keep widgets on the desktop after reboot (start at login)",
                                      active=cfg.get("autostart", True))
         self.devtools = Gtk.CheckButton(label="Enable web inspector in widgets",
                                         active=cfg["developer_extras"])
+        box.pack_start(self.login, False, False, 0)
+        box.pack_start(self.devtools, False, False, 0)
 
-        rows = [("AI backend", self.backend), ("CLI model", self.cli_model),
-                ("API model", self.api_model), ("API key", self.api_key),
-                ("", self.login), ("", self.devtools)]
+        self.backend.connect("changed", self._on_backend_changed)
+        self.backend.set_active_id(cfg["backend"] if self.pages.get_child_by_name(cfg["backend"]) else "auto")
+        self.set_default_size(560, -1)
+        self.show_all()
+        self._on_backend_changed(self.backend)
+
+    def _page(self, name, rows, hint):
+        grid = Gtk.Grid(column_spacing=12, row_spacing=10)
         for i, (text, widget) in enumerate(rows):
             grid.attach(label(text), 0, i, 1, 1)
             widget.set_hexpand(True)
             grid.attach(widget, 1, i, 1, 1)
-        self.show_all()
+        grid.attach(_hint(hint), 0, len(rows), 2, 1)
+        self.pages.add_named(grid, name)
 
-    def apply(self, cfg: dict):
-        cfg.update({
+    def _on_backend_changed(self, combo):
+        name = combo.get_active_id() or "auto"
+        self.pages.set_visible_child_name(name)
+        self.test_status.set_text("")
+        if name == "ollama" and not getattr(self, "_ollama_loaded", False):
+            self._ollama_loaded = True
+            self._load_ollama_models()
+
+    def _in_thread(self, work, done):
+        """Run work() off the UI thread; done(ok, result) runs back on it unless the dialog closed."""
+        def run():
+            try:
+                ok, result = True, work()
+            except Exception as e:  # shown in the dialog
+                ok, result = False, str(e)
+
+            def finish():
+                if self.alive:
+                    done(ok, result)
+                return False
+            GLib.idle_add(finish)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _load_ollama_models(self):
+        url = self.ollama_url.get_text().strip()
+
+        def done(ok, models):
+            if not ok:
+                self.test_status.set_text(f"✗ {models}")
+                return
+            typed = self.ollama_model.get_child().get_text()
+            self.ollama_model.remove_all()
+            for m in models:
+                self.ollama_model.append_text(m)
+            if not typed and models:
+                self.ollama_model.get_child().set_text(models[0])
+            self.test_status.set_text(f"{len(models)} model{'s' if len(models) != 1 else ''} installed"
+                                      if models else "Ollama is running but has no models yet.")
+        self._in_thread(lambda: backends.OllamaBackend(url=url).models(), done)
+
+    def _on_test(self, _btn):
+        cfg = {**self.cfg, **self.values()}
+        self.test_btn.set_sensitive(False)
+        self.test_status.set_text("Testing…")
+
+        def work():
+            kind, prefix = cfg["backend"], ""
+            if kind == "auto":
+                kind = cfg["backend"] = backends.resolve_auto(cfg)
+                prefix = f"Automatic uses {dict((b, s) for b, s, _ in BACKENDS)[kind]}. "
+            return prefix + backends.from_config(cfg).check()
+
+        def done(ok, message):
+            self.test_btn.set_sensitive(True)
+            self.test_status.set_text(("✓ " if ok else "✗ ") + message)
+        self._in_thread(work, done)
+
+    def values(self) -> dict:
+        return {
             "backend": self.backend.get_active_id(),
             "cli_model": self.cli_model.get_text().strip(),
             "api_model": self.api_model.get_text().strip() or config.DEFAULTS["api_model"],
             "anthropic_api_key": self.api_key.get_text().strip(),
-            "autostart": self.login.get_active(),
-            "developer_extras": self.devtools.get_active(),
-        })
+            "ollama_url": self.ollama_url.get_text().strip(),
+            "ollama_model": self.ollama_model.get_child().get_text().strip(),
+            "openrouter_api_key": self.or_key.get_text().strip(),
+            "openrouter_model": (self.or_model.get_child().get_text().strip()
+                                 or config.DEFAULTS["openrouter_model"]),
+        }
+
+    def apply(self, cfg: dict):
+        cfg.update(self.values())
+        cfg.update({"autostart": self.login.get_active(), "developer_extras": self.devtools.get_active()})
         autostart.set_enabled(self.login.get_active())
 
 
@@ -97,9 +259,8 @@ class MakerWindow(Gtk.ApplicationWindow):
         settings_btn.connect("clicked", self._on_settings)
         header.pack_end(settings_btn)
         self.backend_combo = Gtk.ComboBoxText()
-        self.backend_combo.append("auto", "Auto")
-        self.backend_combo.append("claude-cli", "Claude CLI")
-        self.backend_combo.append("anthropic", "Anthropic API")
+        for bid, short, _long in BACKENDS:
+            self.backend_combo.append(bid, short)
         self.backend_combo.set_active_id(app.cfg["backend"])
         self.backend_combo.connect("changed", self._on_backend_changed)
         header.pack_end(self.backend_combo)
@@ -355,7 +516,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.spinner.stop()
         self.status.set_text("Generation failed.")
         self._sync_ui()
-        title = "Connect Pickit to Claude" if needs_setup else "Could not generate the widget"
+        title = "Connect Pickit to an AI model" if needs_setup else "Could not generate the widget"
         dlg = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.ERROR,
                                 buttons=Gtk.ButtonsType.CLOSE, text=title)
         dlg.format_secondary_text(message)
