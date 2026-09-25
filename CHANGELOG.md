@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-25
+
+### Fixed
+- The command approval dialog showed commands in a serif math font on systems where the generic `monospace` font resolves oddly (for example "DejaVu Math TeX Gyre" on Linux Mint). It now asks for common monospace fonts by name.
+
+### Changed
+- The widget preview area in the Pickit window uses a neutral slate background instead of a purple-grey one.
+
 ## [1.1.0] - 2026-09-24
 
 ### Added
@@ -55,7 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/dengo07/pickit/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dengo07/pickit/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/dengo07/pickit/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/dengo07/pickit/compare/v1.0.2...v1.0.3

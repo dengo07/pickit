@@ -5,12 +5,12 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
-PREVIEW_BG = "#4b4a63"  # a mid-tone "wallpaper" that shows both light and dark widgets well
+PREVIEW_BG = "#3b3f45"  # a neutral mid-tone "wallpaper" that shows both light and dark widgets well
 
 CSS = b"""
 #preview-bg { background-color: %s; }
 .dim { opacity: 0.7; }
-.cmd { font-family: monospace; }
+.cmd { font-family: "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "JetBrains Mono", monospace; }
 """ % PREVIEW_BG.encode()
 
 

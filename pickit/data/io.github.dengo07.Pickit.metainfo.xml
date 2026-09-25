@@ -47,6 +47,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.1.1" date="2026-09-25">
+      <description>
+        <p>The command approval dialog shows commands in a proper monospace font, and the widget preview uses a neutral background.</p>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-09-24">
       <description>
         <p>New native engine: most widgets are now drawn with GTK instead of a web engine, using a fraction of the memory (five typical widgets: about 25 MB). The AI picks native automatically whenever the design allows and uses HTML for free-form designs.</p>
