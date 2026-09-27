@@ -14,4 +14,8 @@ python3 -c "import gi; gi.require_version('Gtk','3.0'); gi.require_version('WebK
 install -Dm644 "$DIR/pickit/data/$APP_ID.svg" "$SHARE/icons/hicolor/scalable/apps/$APP_ID.svg"
 sed "s|^Exec=pickit|Exec=env PYTHONPATH=$DIR python3 -m pickit|" "$DIR/pickit/data/$APP_ID.desktop" \
   > "$SHARE/applications/$APP_ID.desktop"
+# Double-clicking a .pickit widget file opens it in Pickit.
+install -Dm644 "$DIR/pickit/data/$APP_ID.mime.xml" "$SHARE/mime/packages/$APP_ID.xml"
+update-mime-database "$SHARE/mime" 2>/dev/null || true
+update-desktop-database "$SHARE/applications" 2>/dev/null || true
 echo "Installed. Open \"Pickit\" from your application menu."

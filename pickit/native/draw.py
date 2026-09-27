@@ -63,8 +63,10 @@ def bar(cr, w, h, frac, color, track, radius):
 
 def sparkline(cr, w, h, values, lo, hi, color, fill, line_width):
     pts = [v for v in values if v is not None]
-    if len(pts) < 2:
+    if not pts:
         return
+    if len(pts) == 1:
+        pts = pts * 2  # a flat line until there's history, rather than nothing
     lo = min(pts) if lo is None else lo
     hi = max(pts) if hi is None else hi
     span = (hi - lo) or 1.0

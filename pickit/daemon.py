@@ -11,7 +11,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 from . import autostart, config, runtime, store  # noqa: E402
-from .dialogs import approval_dialog, confirm, install_css  # noqa: E402
+from .dialogs import approval_dialog, confirm, export_dialog, install_css  # noqa: E402
 from .events import SystemEvents  # noqa: E402
 from .widget_window import WidgetWindow  # noqa: E402
 
@@ -104,6 +104,7 @@ class DesktopDaemon(Gtk.Application):
     def _callbacks(self):
         return {"edit": lambda wid: autostart.spawn("edit", wid),
                 "approve": self._review_commands,
+                "export": lambda wid: export_dialog(None, wid),
                 "hide": self._hide,
                 "delete": self._delete}
 

@@ -123,3 +123,39 @@ Rendering rules:
 - Never animate forever (`animation: … infinite`, or re-triggered transitions). WebKit then redraws at 60 fps nonstop.
 
 The full contract the model is given is in [`pickit/prompts/system.md`](../pickit/prompts/system.md).
+
+## .pickit files
+
+A shared widget is one JSON file with the `.pickit` extension (MIME type `application/x-pickit-widget`):
+
+```jsonc
+{
+  "pickit": 1,                       // file format version
+  "exported_by": "Pickit 1.3.0",
+  "name": "System Rings",
+  "engine": "native",
+  "width": 380, "height": 156,
+  "position": "top-right",
+  "commands": { "stats": { "cmd": "…", "interval": 3 } },
+  "ui": { "type": "card", "children": [ … ] }   // or "html": "<!doctype html>…"
+}
+```
+
+- Export writes only these fields. The approval hash, the screen position you dragged it to, whether it's shown, and your prompt history stay on your machine.
+- Import validates the file exactly like an AI-generated widget (same whitelist, same limits, at most 2 MB), ignores any approval inside it, and asks you to approve its commands. A plain widget spec without the `pickit` key also imports.
+- A file from a newer Pickit with a higher `pickit` version is refused with a message to update.
+
+## Gallery widgets
+
+The gallery is [`pickit/gallery/`](../pickit/gallery/): one widget spec per file, plus a `gallery` object that Pickit strips before using the spec:
+
+```jsonc
+"gallery": {
+  "order": 20,                      // position in the gallery
+  "category": "Time",
+  "description": "New York, London and Tokyo at a glance.",
+  "sample": { "t": "ny=09:41 Fri\nlondon=14:41 Fri\ntokyo=22:41 Fri" }
+}
+```
+
+`sample` is made-up command output that the gallery preview shows instead of running the commands, so browsing never runs anything. A list of outputs is delivered in order, which fills sparklines. The tests check that every gallery widget validates, that every data command has sample output, and that every field the widget displays exists in its sample.

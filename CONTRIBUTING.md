@@ -37,6 +37,17 @@ pytest
 - Changes to `pickit/prompts/system.md` affect every generated widget. Show a few before-and-after examples.
 - Anything that touches command execution or approval (`bridge.py`, `store.py`'s hashing, `runtime.py`'s host wrappers) needs extra care. See [SECURITY.md](SECURITY.md).
 
+## Adding a widget to the gallery
+
+Gallery widgets live in [`pickit/gallery/`](pickit/gallery/), one JSON file each (see [the gallery format](docs/WIDGET_FORMAT.md#gallery-widgets)). A good gallery widget:
+
+- is native (a few MB of memory) and looks good on both light and dark wallpapers,
+- uses only tools every distro has (`/proc`, `/sys`, coreutils, `awk`, `python3`'s standard library) and read-only commands,
+- has `sample` output with made-up values, never your own hostname, location or music,
+- passes `pytest tests/test_gallery.py`, which checks that the sample covers every field it displays.
+
+Include a screenshot of it on your desktop in the pull request. The easiest way to make one: build it in Pickit, then run `pickit export <id>` and add a `gallery` object to the file.
+
 ## Project layout
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the maker, the daemon and the widget store fit together, and [docs/PACKAGING.md](docs/PACKAGING.md) for the Flatpak and AppImage builds.

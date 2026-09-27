@@ -1,0 +1,168 @@
+{
+ "name": "Network",
+ "engine": "native",
+ "width": 320,
+ "height": 168,
+ "position": "bottom-right",
+ "commands": {
+  "n": {
+   "cmd": "i=$(ip route show default 2>/dev/null | awk '{print $5; exit}'); [ -n \"$i\" ] || i=$(awk -F: 'NR>2 {gsub(/ /, \"\", $1); if ($1 != \"lo\") {print $1; exit}}' /proc/net/dev); [ -n \"$i\" ] || exit 0; s=/sys/class/net/$i/statistics; r1=$(cat $s/rx_bytes); t1=$(cat $s/tx_bytes); sleep 1; r2=$(cat $s/rx_bytes); t2=$(cat $s/tx_bytes); echo \"iface=$i\"; echo \"down=$((r2 - r1))\"; echo \"up=$((t2 - t1))\"",
+   "interval": 2.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "label",
+      "text": "NETWORK",
+      "size": 10,
+      "weight": "semibold",
+      "letter_spacing": 1.4,
+      "color": "rgba(244,241,234,0.62)"
+     },
+     {
+      "type": "spacer"
+     },
+     {
+      "type": "label",
+      "text": "{n.iface|default:offline}",
+      "size": 10,
+      "color": "rgba(244,241,234,0.4)"
+     }
+    ]
+   },
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "label",
+        "text": "↓ DOWN",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.2,
+        "color": "rgba(244,241,234,0.4)"
+       },
+       {
+        "type": "label",
+        "text": "{n.down|bytes}/s",
+        "size": 17,
+        "color": "#f4f1ea"
+       }
+      ],
+      "spacing": 1,
+      "width": 110,
+      "valign": "center"
+     },
+     {
+      "type": "sparkline",
+      "value": "{n.down}",
+      "points": 40,
+      "min": 0,
+      "color": "#60a5fa",
+      "fill": "rgba(96,165,250,0.16)",
+      "line_width": 2,
+      "height": 40,
+      "hexpand": true
+     }
+    ],
+    "spacing": 10
+   },
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "label",
+        "text": "↑ UP",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.2,
+        "color": "rgba(244,241,234,0.4)"
+       },
+       {
+        "type": "label",
+        "text": "{n.up|bytes}/s",
+        "size": 17,
+        "color": "#f4f1ea"
+       }
+      ],
+      "spacing": 1,
+      "width": 110,
+      "valign": "center"
+     },
+     {
+      "type": "sparkline",
+      "value": "{n.up}",
+      "points": 40,
+      "min": 0,
+      "color": "#f0a64a",
+      "fill": "rgba(240,166,74,0.16)",
+      "line_width": 2,
+      "height": 40,
+      "hexpand": true
+     }
+    ],
+    "spacing": 10
+   }
+  ],
+  "spacing": 10
+ },
+ "gallery": {
+  "order": 80,
+  "category": "System",
+  "description": "Download and upload speed with history.",
+  "sample": {
+   "n": [
+    "iface=wlp2s0\ndown=1025063\nup=44079",
+    "iface=wlp2s0\ndown=1470729\nup=128236",
+    "iface=wlp2s0\ndown=1719604\nup=187092",
+    "iface=wlp2s0\ndown=1824443\nup=227428",
+    "iface=wlp2s0\ndown=1899136\nup=263888",
+    "iface=wlp2s0\ndown=2047193\nup=309782",
+    "iface=wlp2s0\ndown=2298897\nup=369001",
+    "iface=wlp2s0\ndown=1422983\nup=108669",
+    "iface=wlp2s0\ndown=1643289\nup=163851",
+    "iface=wlp2s0\ndown=1689529\nup=196653",
+    "iface=wlp2s0\ndown=1541763\nup=204512",
+    "iface=wlp2s0\ndown=1281455\nup=197901",
+    "iface=wlp2s0\ndown=1056239\nup=195802",
+    "iface=wlp2s0\ndown=104000\nup=12800",
+    "iface=wlp2s0\ndown=104000\nup=12800",
+    "iface=wlp2s0\ndown=416787\nup=19586",
+    "iface=wlp2s0\ndown=882060\nup=106264",
+    "iface=wlp2s0\ndown=1292613\nup=185907",
+    "iface=wlp2s0\ndown=1577876\nup=249441",
+    "iface=wlp2s0\ndown=1761640\nup=299925",
+    "iface=wlp2s0\ndown=770094\nup=24726",
+    "iface=wlp2s0\ndown=1047515\nup=87251",
+    "iface=wlp2s0\ndown=1466884\nup=168027",
+    "iface=wlp2s0\ndown=1975589\nup=260290",
+    "iface=wlp2s0\ndown=2446575\nup=347702",
+    "iface=wlp2s0\ndown=2743899\nup=412787",
+    "iface=wlp2s0\ndown=1626406\nup=121395",
+    "iface=wlp2s0\ndown=1468317\nup=127926",
+    "iface=wlp2s0\ndown=1223838\nup=123350",
+    "iface=wlp2s0\ndown=1044044\nup=127091",
+    "iface=wlp2s0\ndown=1030880\nup=152256",
+    "iface=wlp2s0\ndown=1190140\nup=199589",
+    "iface=wlp2s0\ndown=1438827\nup=258420",
+    "iface=wlp2s0\ndown=491654\nup=12800",
+    "iface=wlp2s0\ndown=613869\nup=31497",
+    "iface=wlp2s0\ndown=648571\nup=62816",
+    "iface=wlp2s0\ndown=691339\nup=95172",
+    "iface=wlp2s0\ndown=864989\nup=144355",
+    "iface=wlp2s0\ndown=1245722\nup=220164",
+    "iface=wlp2s0\ndown=642719\nup=12800"
+   ]
+  }
+ }
+}

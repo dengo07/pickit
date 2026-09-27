@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-pickit-widget">
+    <comment>Pickit widget</comment>
+    <sub-class-of type="application/json"/>
+    <icon name="io.github.dengo07.Pickit"/>
+    <glob pattern="*.pickit"/>
+  </mime-type>
+</mime-info>

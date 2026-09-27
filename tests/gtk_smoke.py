@@ -62,3 +62,20 @@ GLib.timeout_add(500, loop.quit)
 loop.run()  # the Ollama page's model lookup fails quietly against a closed port
 dlg.destroy()
 print("ok: settings dialog pages")
+
+from pickit import gallery  # noqa: E402
+from pickit.gallery_ui import GalleryWindow  # noqa: E402
+
+
+class FakeMaker(Gtk.Window):
+    def choose_import(self): ...
+    def open_spec(self, *a, **kw): ...
+    def add_from_gallery(self, *a, **kw): return False
+
+
+gallery_window = GalleryWindow(FakeMaker())
+GLib.timeout_add(800, loop.quit)
+loop.run()
+assert len(gallery_window.views) == len(gallery.items())
+gallery_window.destroy()
+print(f"ok: gallery window with {len(gallery.items())} previews")

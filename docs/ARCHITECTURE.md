@@ -40,7 +40,10 @@ sequenceDiagram
 | `bridge.py` | The `window.widget` JS API and `CommandRunner`, which runs approved commands on their intervals in threads. |
 | `generator.py` | Builds the prompt, extracts and validates the JSON spec, and retries once with the error fed back. |
 | `backends.py` | `ClaudeCLIBackend` (`claude -p --output-format json --tools ""`), `AnthropicBackend` (Python SDK, streaming, adaptive thinking), `OllamaBackend` (`/api/chat` with JSON output, thinking off, and a context of 16k tokens or more) and `OpenRouterBackend` (OpenAI-style chat completions, JSON mode when the model supports it). The last two use only the standard library. `resolve_auto()` picks the first backend that's set up. |
-| `store.py` | Widget files, the change stamp, approval hashes and content signatures. |
+| `store.py` | Widget files, the change stamp, approval hashes and content signatures; `free_anchor()` picks a free corner for a new widget. |
+| `gallery.py`, `gallery/` | The ready-made widgets: specs plus sample output for previews. |
+| `gallery_ui.py` | The gallery window. Each card shows a live native preview drawn scaled down from an offscreen window, fed with sample data, so browsing never runs a command. |
+| `share.py` | `.pickit` widget files: export (spec only: no approval, position or history) and import (full validation, approval required). |
 | `runtime.py` | Detects source, Flatpak or AppImage; handles host command wrapping (`flatpak-spawn --host`), self-launching and locating the Claude CLI. |
 | `autostart.py` | Launches the daemon detached, writes the XDG autostart entry, and adds the AppImage's menu entry. |
 | `config.py` | `~/.config/pickit/config.json`. |

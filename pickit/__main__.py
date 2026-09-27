@@ -3,7 +3,11 @@
     python -m pickit              open the maker window
     python -m pickit new "..."    generate a widget from a description and place it
     python -m pickit edit <id>    open a widget in the maker window
+    python -m pickit gallery      browse ready-made widgets
     python -m pickit list         list saved widgets
+    python -m pickit export <id> [FILE]
+                                  save a widget as a .pickit file to share it
+    python -m pickit import FILE  open a .pickit file (you approve its commands first)
     python -m pickit run          start the desktop daemon that shows the widgets
                                        (started automatically at login and by the maker)
     python -m pickit stop         stop the desktop daemon (widgets disappear until next start)
@@ -11,6 +15,7 @@
 
 import os
 import sys
+from pathlib import Path
 
 
 def main() -> int:
@@ -43,6 +48,8 @@ def main() -> int:
         if not widgets:
             print("No widgets yet. Run: python -m pickit")
         return 0
+    if args and args[0] == "export":
+        return _export(args[1:])
     if args and args[0] in ("run", "stop"):
         from .daemon import DesktopDaemon, acquire_instance_lock, is_running
         if args[0] == "stop" and not is_running():
@@ -52,12 +59,36 @@ def main() -> int:
             print("pickit: a widget daemon is already running")
             return 0
         return DesktopDaemon().run(sys.argv)
-    if args and args[0] not in ("new", "edit", "gui"):
+    if args and args[0] not in ("new", "edit", "gui", "gallery", "import") and not Path(args[0]).is_file():
         print(f"Unknown command: {args[0]}\n\n{__doc__.strip()}", file=sys.stderr)
+        return 2
+    if args and args[0] == "import" and len(args) < 2:
+        print("Usage: pickit import FILE", file=sys.stderr)
         return 2
 
     from .app import PickitApp
     return PickitApp().run(sys.argv)
+
+
+def _export(args) -> int:
+    from . import share, store
+    if not args:
+        print("Usage: pickit export <id> [FILE]   (ids: pickit list)", file=sys.stderr)
+        return 2
+    try:
+        manifest = store.load(args[0])
+    except FileNotFoundError:
+        print(f"No widget with the id {args[0]}. See: pickit list", file=sys.stderr)
+        return 1
+    path = Path(args[1]) if len(args) > 1 else Path.cwd() / share.default_filename(manifest["name"])
+    try:
+        share.export_widget(args[0], path)
+    except OSError as e:
+        print(f"Could not write {path}: {e}\n(In the Flatpak, export from the Pickit window instead: "
+              "it can save anywhere.)", file=sys.stderr)
+        return 1
+    print(f"Exported “{manifest['name']}” to {path}")
+    return 0
 
 
 if __name__ == "__main__":

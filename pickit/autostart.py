@@ -1,5 +1,6 @@
 """Background daemon launching and start-at-login support (XDG autostart)."""
 
+import subprocess
 from pathlib import Path
 
 from . import runtime
@@ -62,3 +63,16 @@ def install_launcher() -> None:
     desktop += "TryExec=" + runtime.APPIMAGE + "\n"
     if not entry.exists() or entry.read_text() != desktop:
         entry.write_text(desktop)
+    # Double-clicking a .pickit widget file opens it in Pickit.
+    mime = share / "mime" / "packages" / f"{runtime.APP_ID}.xml"
+    source = (DATA_FILES / f"{runtime.APP_ID}.mime.xml").read_bytes()
+    if not mime.exists() or mime.read_bytes() != source:
+        mime.parent.mkdir(parents=True, exist_ok=True)
+        mime.write_bytes(source)
+        for tool, target in (("update-mime-database", share / "mime"),
+                             ("update-desktop-database", entry.parent)):
+            try:  # host tools, so without the AppImage's library paths
+                subprocess.run([tool, str(target)], env=runtime.host_env(), timeout=30,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except (OSError, subprocess.TimeoutExpired):
+                pass

@@ -111,6 +111,13 @@ class NativeView(Gtk.EventBox):
             self.runner = CommandRunner(self._commands, self._deliver)
             self.runner.start()
 
+    def show_sample(self, sample: dict):
+        """Preview with made-up command output instead of running the commands.
+        A list of outputs is delivered in order, which fills sparklines."""
+        for key, outputs in sample.items():
+            for out in outputs if isinstance(outputs, list) else [outputs]:
+                self._deliver(key, {"out": out, "err": "", "code": 0})
+
     def reload_widget(self):
         if self._last_load:
             self.load_widget(*self._last_load)

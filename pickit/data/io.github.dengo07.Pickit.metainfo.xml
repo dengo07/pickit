@@ -17,6 +17,8 @@
       <li>Widgets sit on the desktop below your windows, on every workspace</li>
       <li>They stay after you close the app and come back after a reboot</li>
       <li>Refine any widget by asking for changes, such as "make it bigger and blue"</li>
+      <li>A gallery of ready-made widgets that work without any AI setup</li>
+      <li>Share widgets as files that others open with a double-click</li>
       <li>Live data comes from shell commands that you review and approve first</li>
       <li>Light on memory: most widgets are drawn natively with GTK</li>
       <li>Works with Claude (your Claude Code login or an API key), a free local model through Ollama, or any model on OpenRouter</li>
@@ -31,12 +33,17 @@
       <caption>Editing a widget with a live preview</caption>
       <image>https://raw.githubusercontent.com/dengo07/pickit/main/docs/screenshots/maker.png</image>
     </screenshot>
+    <screenshot>
+      <caption>The gallery of ready-made widgets</caption>
+      <image>https://raw.githubusercontent.com/dengo07/pickit/main/docs/screenshots/gallery.png</image>
+    </screenshot>
   </screenshots>
   <categories>
     <category>Utility</category>
   </categories>
   <provides>
     <binary>pickit</binary>
+    <mediatype>application/x-pickit-widget</mediatype>
   </provides>
   <requires>
     <display_length compare="ge">768</display_length>
@@ -47,6 +54,11 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.3.0" date="2026-09-27">
+      <description>
+        <p>A gallery of thirteen ready-made widgets that you can add without setting up any AI, and widget sharing: export a widget as a .pickit file, and anyone can open it with a double-click and approve its commands.</p>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-09-25">
       <description>
         <p>Choose your AI: besides Claude, Pickit now works with local models through Ollama (free, and your prompts stay on your computer) and with any model on OpenRouter. Settings shows the options for each backend and can test the connection.</p>

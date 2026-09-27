@@ -1,0 +1,135 @@
+{
+ "name": "Day, Month & Year",
+ "engine": "native",
+ "width": 300,
+ "height": 158,
+ "position": "top-right",
+ "commands": {
+  "p": {
+   "cmd": "n=$(date +%s); d0=$(date -d 'today 00:00' +%s); m=$(date +%Y-%m-01); m0=$(date -d \"$m\" +%s); m1=$(date -d \"$m +1 month\" +%s); y=$(date +%Y); y0=$(date -d \"$y-01-01\" +%s); y1=$(date -d \"$((y + 1))-01-01\" +%s); awk -v n=$n -v d0=$d0 -v m0=$m0 -v m1=$m1 -v y0=$y0 -v y1=$y1 'BEGIN { printf \"day=%.1f\\nmonth=%.1f\\nyear=%.1f\\n\", (n-d0)/864, (n-m0)*100/(m1-m0), (n-y0)*100/(y1-y0) }'",
+   "interval": 60.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "column",
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "TODAY",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{p.day|round|default:--}%",
+        "size": 12,
+        "weight": "bold",
+        "color": "#f4f1ea"
+       }
+      ]
+     },
+     {
+      "type": "progress",
+      "value": "{p.day}",
+      "thickness": 6,
+      "color": "#f0a64a",
+      "track": "rgba(255,255,255,0.08)"
+     }
+    ],
+    "spacing": 5
+   },
+   {
+    "type": "column",
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "{now|time:%B|upper}",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{p.month|round|default:--}%",
+        "size": 12,
+        "weight": "bold",
+        "color": "#f4f1ea"
+       }
+      ]
+     },
+     {
+      "type": "progress",
+      "value": "{p.month}",
+      "thickness": 6,
+      "color": "#5eead4",
+      "track": "rgba(255,255,255,0.08)"
+     }
+    ],
+    "spacing": 5
+   },
+   {
+    "type": "column",
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "{now|time:%Y}",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{p.year|round|default:--}%",
+        "size": 12,
+        "weight": "bold",
+        "color": "#f4f1ea"
+       }
+      ]
+     },
+     {
+      "type": "progress",
+      "value": "{p.year}",
+      "thickness": 6,
+      "color": "#60a5fa",
+      "track": "rgba(255,255,255,0.08)"
+     }
+    ],
+    "spacing": 5
+   }
+  ],
+  "spacing": 12
+ },
+ "gallery": {
+  "order": 40,
+  "category": "Time",
+  "description": "How much of today, this month and this year has gone by.",
+  "sample": {
+   "p": "day=64.2\nmonth=81.7\nyear=73.4"
+  }
+ }
+}

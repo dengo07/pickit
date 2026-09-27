@@ -100,6 +100,8 @@ def _duration(value, _arg):
     s = int(_num(value))
     h, rest = divmod(abs(s), 3600)
     m, sec = divmod(rest, 60)
+    if h >= 24:
+        return f"{h // 24}d {h % 24}h"
     if h:
         return f"{h}h {m}m"
     return f"{m}m" if m else f"{sec}s"

@@ -147,6 +147,20 @@ def to_spec(manifest: dict) -> dict:
     return spec
 
 
+# Where a new widget goes if its preferred corner is taken: corners first, then edges.
+ANCHOR_ORDER = ("top-right", "top-left", "bottom-right", "bottom-left", "center-right", "center-left",
+                "top-center", "bottom-center")
+
+
+def free_anchor(preferred: str) -> str:
+    """`preferred`, unless a visible, never-moved widget already sits there; then the next free spot."""
+    taken = {m.get("position") for m in list_widgets() if m.get("enabled", True) and "x" not in m}
+    for anchor in (preferred, *ANCHOR_ORDER):
+        if anchor not in taken:
+            return anchor
+    return preferred
+
+
 def delete(widget_id: str) -> None:
     shutil.rmtree(widget_dir(widget_id), ignore_errors=True)
     notify_changed()

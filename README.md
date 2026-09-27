@@ -23,6 +23,8 @@ Pickit uses an AI model to turn your description into a working widget, then pin
 ## Features
 
 - **Plain-language widgets.** Clocks, system meters, weather, now playing, timers, battery gauges and more.
+- **A gallery of ready-made widgets.** Thirteen widgets you can add in one click, no AI needed: clocks, a calendar, system gauges and graphs, network speed, CPU temperature, weather and now playing.
+- **Share widgets.** Export any widget as a `.pickit` file; others open it with a double-click and approve its commands before anything runs.
 - **Part of the desktop.** Widgets sit above the wallpaper and below every window. Show Desktop doesn't hide them, they appear on every workspace, and they stay out of the taskbar and Alt+Tab.
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.
 - **Live data, with approval.** Widgets get data from shell commands that **you approve before they run**. Change a command and Pickit asks again.
@@ -60,7 +62,7 @@ The Flatpak installs system-wide, like the apps from your software center, so it
 
 ### Connect an AI model
 
-Pickit needs one of these. With the backend set to **Automatic**, it uses the first one it finds, in this order:
+To generate your own widgets, Pickit needs one of these (the gallery works without any). With the backend set to **Automatic**, it uses the first one it finds, in this order:
 
 | Backend | Setup | Notes |
 |---|---|---|
@@ -72,6 +74,12 @@ Pickit needs one of these. With the backend set to **Automatic**, it uses the fi
 Open **Settings** (the gear button) to choose a backend and model, and press **Test connection** to check it. You can also switch backends from the menu next to the gear.
 
 ## Usage
+
+<img src="docs/screenshots/gallery.png" width="720" alt="The Pickit gallery with ready-made clock, calendar and system widgets">
+
+**No AI set up yet?** Press **Gallery**, pick a widget and press **Add to desktop**. **Customize** opens it in the editor first, so you can refine it with AI later.
+
+To make your own:
 
 1. Open **Pickit** and describe your widget, or pick one of the examples.
 2. Press **Generate** (or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>).
@@ -86,6 +94,11 @@ On the desktop:
 | Move a widget | <kbd>Alt</kbd>+drag, or drag its handle area |
 | Edit, reload, hide or delete | Right-click the widget |
 | Show or hide widgets | The switches in Pickit's sidebar |
+| Share a widget | Right-click it → **Export…**, or ⋮ → **Export…** in the sidebar |
+
+### Share widgets
+
+**Export…** saves a widget as a small `.pickit` file. Send it to a friend, post it in an issue or a Reddit comment. To use one, double-click it (or press the open-file button in Pickit): Pickit shows a preview and asks you to approve its shell commands, just like a generated widget. Files carry no approval, no screen position and none of your prompts. See [the file format](docs/WIDGET_FORMAT.md#pickit-files).
 
 ### Command line
 
@@ -93,11 +106,14 @@ On the desktop:
 pickit                      open the maker window
 pickit new "a pomodoro timer with a progress ring"
 pickit edit <id>            open a widget in the maker
+pickit gallery              browse ready-made widgets
 pickit list                 list your widgets
+pickit export <id> [FILE]   save a widget as a .pickit file
+pickit import FILE          open a .pickit file
 pickit run | stop           start or stop the desktop daemon (normally automatic)
 ```
 
-For the Flatpak, use `flatpak run io.github.dengo07.Pickit <command>`.
+For the Flatpak, use `flatpak run io.github.dengo07.Pickit <command>`. The Flatpak can only read and write files you pick in a file dialog, so export and import from the Pickit window (or double-click a `.pickit` file) rather than with `pickit export`/`import`.
 
 ## How it works
 

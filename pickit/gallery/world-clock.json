@@ -1,0 +1,139 @@
+{
+ "name": "World Clock",
+ "engine": "native",
+ "width": 380,
+ "height": 126,
+ "position": "top-left",
+ "commands": {
+  "t": {
+   "cmd": "for p in ny:America/New_York london:Europe/London tokyo:Asia/Tokyo; do echo \"${p%%:*}=$(TZ=${p#*:} date '+%H:%M %a')\"; done",
+   "interval": 15.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "label",
+      "text": "WORLD CLOCK",
+      "size": 10,
+      "weight": "semibold",
+      "letter_spacing": 1.4,
+      "color": "rgba(244,241,234,0.62)"
+     },
+     {
+      "type": "spacer"
+     },
+     {
+      "type": "label",
+      "text": "{now|time:%H:%M} here",
+      "size": 10,
+      "color": "rgba(244,241,234,0.4)"
+     }
+    ]
+   },
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "label",
+        "text": "NEW YORK",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.4)"
+       },
+       {
+        "type": "label",
+        "text": "{t.ny|word:0|default:--:--}",
+        "size": 26,
+        "weight": "light",
+        "color": "#f4f1ea"
+       },
+       {
+        "type": "label",
+        "text": "{t.ny|word:1}",
+        "size": 10,
+        "color": "rgba(244,241,234,0.4)"
+       }
+      ],
+      "hexpand": true,
+      "spacing": 1
+     },
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "label",
+        "text": "LONDON",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.4)"
+       },
+       {
+        "type": "label",
+        "text": "{t.london|word:0|default:--:--}",
+        "size": 26,
+        "weight": "light",
+        "color": "#f4f1ea"
+       },
+       {
+        "type": "label",
+        "text": "{t.london|word:1}",
+        "size": 10,
+        "color": "rgba(244,241,234,0.4)"
+       }
+      ],
+      "hexpand": true,
+      "spacing": 1
+     },
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "label",
+        "text": "TOKYO",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.4)"
+       },
+       {
+        "type": "label",
+        "text": "{t.tokyo|word:0|default:--:--}",
+        "size": 26,
+        "weight": "light",
+        "color": "#f4f1ea"
+       },
+       {
+        "type": "label",
+        "text": "{t.tokyo|word:1}",
+        "size": 10,
+        "color": "rgba(244,241,234,0.4)"
+       }
+      ],
+      "hexpand": true,
+      "spacing": 1
+     }
+    ],
+    "spacing": 8
+   }
+  ],
+  "spacing": 10
+ },
+ "gallery": {
+  "order": 20,
+  "category": "Time",
+  "description": "New York, London and Tokyo at a glance. Ask the AI for other cities.",
+  "sample": {
+   "t": "ny=09:41 Fri\nlondon=14:41 Fri\ntokyo=22:41 Fri"
+  }
+ }
+}

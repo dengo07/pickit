@@ -199,7 +199,7 @@ class WidgetWindow(Gtk.Window):
         items = [("Edit with AI…", "edit"), ("Reload", "reload")]
         if self.manifest.get("commands"):
             items.append(("Review commands…", "approve"))
-        items += [("Reset position", "reset"), None, ("Hide", "hide"), ("Delete", "delete")]
+        items += [("Reset position", "reset"), ("Export…", "export"), None, ("Hide", "hide"), ("Delete", "delete")]
         for item in items:
             if item is None:
                 menu.append(Gtk.SeparatorMenuItem())

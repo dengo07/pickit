@@ -12,18 +12,23 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk, Pango  # noqa: E402
 
-from . import autostart, backends, config, generator, runtime, store  # noqa: E402
+from . import autostart, backends, config, generator, runtime, share, store  # noqa: E402
 from .dialogs import (  # noqa: E402
     MONO_FONTS,
-    PREVIEW_BG,  # noqa: E402
+    PREVIEW_BG,
     approval_dialog,
-    confirm,  # noqa: E402
+    choose_widget_file,
+    confirm,
+    error_dialog,
+    export_dialog,
     install_css,
     label,
 )
 from .widget_window import engine_of, make_view  # noqa: E402
 
 APP_ID = runtime.APP_ID
+IMPORT_NOTE = ("This widget comes from a file, and anyone can write one. Read every command, and only "
+               "approve the ones you understand.")
 
 EXAMPLES = [
     ("Minimal clock", "A big minimalist clock with the date underneath, white text with a soft shadow"),
@@ -264,6 +269,16 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.backend_combo.set_active_id(app.cfg["backend"])
         self.backend_combo.connect("changed", self._on_backend_changed)
         header.pack_end(self.backend_combo)
+        gallery_btn = Gtk.Button(label="Gallery", tooltip_text="Ready-made widgets, no AI needed",
+                                 image=Gtk.Image.new_from_icon_name("view-grid-symbolic", Gtk.IconSize.BUTTON),
+                                 always_show_image=True)
+        gallery_btn.connect("clicked", lambda _b: self.open_gallery())
+        header.pack_start(gallery_btn)
+        import_btn = Gtk.Button.new_from_icon_name("document-open-symbolic", Gtk.IconSize.BUTTON)
+        import_btn.set_tooltip_text("Import a widget file (.pickit)")
+        import_btn.connect("clicked", lambda _b: self.choose_import())
+        header.pack_start(import_btn)
+        self.gallery_window = None
 
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=280)
         self.add(paned)
@@ -331,9 +346,17 @@ class MakerWindow(Gtk.ApplicationWindow):
         # loads WebKit when an HTML widget is previewed.
         self.preview = None
         self.preview_engine = None
-        self.preview_hint = label("Your widget preview appears here.")
-        self.preview_hint.set_halign(Gtk.Align.CENTER)
-        self.preview_hint.get_style_context().add_class("dim")
+        self.preview_hint = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        hint = label("Your widget preview appears here.")
+        hint.set_halign(Gtk.Align.CENTER)
+        hint.get_style_context().add_class("dim")
+        browse = Gtk.Button(label="Browse the gallery", halign=Gtk.Align.CENTER)
+        browse.connect("clicked", lambda _b: self.open_gallery())
+        browse_hint = label("or start from a ready-made widget, no AI needed")
+        browse_hint.set_halign(Gtk.Align.CENTER)
+        browse_hint.get_style_context().add_class("dim")
+        for w in (hint, browse, browse_hint):
+            self.preview_hint.pack_start(w, False, False, 0)
         stack_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         stack_box.set_valign(Gtk.Align.CENTER)
         stack_box.set_halign(Gtk.Align.CENTER)
@@ -548,6 +571,63 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.reset_editor()
         self.status.set_text(f"“{name}” is on your desktop. Alt+drag to move it; right-click for options.")
 
+    # --- gallery, import and export ---------------------------------------------
+    def open_gallery(self):
+        from .gallery_ui import GalleryWindow  # builds a preview of every item, so only on demand
+        if self.gallery_window is None:
+            self.gallery_window = GalleryWindow(self)
+            self.gallery_window.connect("destroy", lambda _w: setattr(self, "gallery_window", None))
+        self.gallery_window.present()
+
+    def open_spec(self, spec: dict, history: str, origin: str, note: str | None = None):
+        """Load a ready-made spec (gallery item, imported file) as a new draft."""
+        if self.busy:
+            return
+        self.present()
+        spec["position"] = store.free_anchor(spec["position"])
+        self.draft, self.editing_id, self.prompts, self.auto_place = spec, None, [history], False
+        self.prompt.get_buffer().set_text("")
+        self.draft_approved = not spec["commands"] or approval_dialog(self, spec["name"], spec["commands"],
+                                                                      note=note)
+        self._show_preview()
+        self.status.set_text(f"Opened “{spec['name']}” from {origin}. Place it on the desktop, or describe a "
+                             "change and press Refine.")
+
+    def add_from_gallery(self, item, parent=None) -> bool:
+        spec = dict(item.spec)
+        if spec["commands"] and not approval_dialog(parent or self, spec["name"], spec["commands"],
+                                                    accept="Approve and add", reject="Cancel"):
+            return False
+        spec["position"] = store.free_anchor(spec["position"])
+        store.save_spec(spec, approved=True, prompt=f"Gallery: {spec['name']}")
+        autostart.ensure_daemon()
+        self.refresh_list()
+        self.status.set_text(f"“{spec['name']}” is on your desktop. Alt+drag to move it; right-click for options.")
+        return True
+
+    def choose_import(self):
+        path = choose_widget_file(self.gallery_window or self)
+        if path:
+            self.import_file(path)
+
+    def import_file(self, path: str | None):
+        if not path:  # e.g. a URI with no local file behind it
+            error_dialog(self, "Could not import the widget", "Pickit can only open local files.")
+            return False
+        try:
+            spec = share.read_widget_file(path)
+        except share.WidgetFileError as e:
+            error_dialog(self, "Could not import the widget", str(e))
+            return False
+        name = path.rsplit("/", 1)[-1]
+        self.open_spec(spec, f"Imported from {name}", name, note=IMPORT_NOTE)
+        return False  # also used as an idle callback
+
+    def export(self, widget_id: str):
+        path = export_dialog(self, widget_id)
+        if path:
+            self.status.set_text(f"Exported to {path}. Anyone with Pickit can open this file.")
+
     # --- sidebar ----------------------------------------------------------------
     def refresh_list(self):
         for child in self.listbox.get_children():
@@ -567,15 +647,21 @@ class MakerWindow(Gtk.ApplicationWindow):
             edit = Gtk.Button.new_from_icon_name("document-edit-symbolic", Gtk.IconSize.BUTTON)
             edit.set_tooltip_text("Edit with AI")
             edit.connect("clicked", lambda _b, wid=m["id"]: self.edit(wid))
-            delete = Gtk.Button.new_from_icon_name("user-trash-symbolic", Gtk.IconSize.BUTTON)
-            delete.set_tooltip_text("Delete")
-            delete.connect("clicked", lambda _b, wid=m["id"]: self.delete_widget(wid))
-            for b in (edit, delete):
+            more = Gtk.MenuButton(tooltip_text="More",
+                                  image=Gtk.Image.new_from_icon_name("view-more-symbolic", Gtk.IconSize.BUTTON))
+            menu = Gtk.Menu()
+            for text, action in (("Export…", self.export), ("Delete", self.delete_widget)):
+                item = Gtk.MenuItem(label=text)
+                item.connect("activate", lambda _i, a=action, wid=m["id"]: a(wid))
+                menu.append(item)
+            menu.show_all()
+            more.set_popup(menu)
+            for b in (edit, more):
                 b.get_style_context().add_class("flat")
             row.pack_start(name, True, True, 0)
             row.pack_start(switch, False, False, 0)
             row.pack_start(edit, False, False, 0)
-            row.pack_start(delete, False, False, 0)
+            row.pack_start(more, False, False, 0)
             self.listbox.add(row)
         self.listbox.show_all()
 
@@ -639,6 +725,12 @@ class PickitApp(Gtk.Application):
                 maker.edit(args[1])
             except FileNotFoundError:
                 pass
+        elif command == "gallery":
+            maker.open_gallery()
+        elif command == "import" and len(args) > 1 or command not in ("gui", "new", "edit", "import"):
+            # `pickit import FILE`, or a .pickit file opened from the file manager
+            path = cmdline.create_file_for_arg(args[-1]).get_path()
+            GLib.idle_add(maker.import_file, path)  # after the window is up; it may show dialogs
         return 0
 
     def show_maker(self) -> MakerWindow:

@@ -1,5 +1,7 @@
 """Dialogs shared by the maker window and the desktop daemon."""
 
+from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -13,6 +15,9 @@ CSS = b"""
 #preview-bg { background-color: %s; }
 .dim { opacity: 0.7; }
 .cmd { font-family: %s; }
+.gallery-card { background-color: alpha(@theme_fg_color, 0.045); border-radius: 14px; padding: 12px; }
+.gallery-stage { border-radius: 10px; }
+.warning-note { color: @warning_color; }
 """ % (PREVIEW_BG.encode(), ", ".join(f'"{f}"' if " " in f else f for f in MONO_FONTS.split(",")).encode())
 
 
@@ -30,11 +35,12 @@ def label(text="", **kw):
     return lbl
 
 
-def approval_dialog(parent, name: str, commands: dict) -> bool:
+def approval_dialog(parent, name: str, commands: dict, note: str | None = None,
+                    accept: str = "Approve and run", reject: str = "Don't run commands") -> bool:
     """Ask the user to approve a widget's shell commands. Returns True if approved."""
     dlg = Gtk.Dialog(title="Approve widget commands", transient_for=parent, modal=True)
-    dlg.add_button("Don't run commands", Gtk.ResponseType.REJECT)
-    ok = dlg.add_button("Approve and run", Gtk.ResponseType.ACCEPT)
+    dlg.add_button(reject, Gtk.ResponseType.REJECT)
+    ok = dlg.add_button(accept, Gtk.ResponseType.ACCEPT)
     ok.get_style_context().add_class("suggested-action")
     dlg.set_default_size(620, -1)
 
@@ -45,6 +51,10 @@ def approval_dialog(parent, name: str, commands: dict) -> bool:
                    "as your user. Only approve commands you understand.")
     intro.set_use_markup(True)
     box.add(intro)
+    if note:
+        warn = label(note)
+        warn.get_style_context().add_class("warning-note")
+        box.add(warn)
 
     grid = Gtk.Grid(column_spacing=12, row_spacing=8)
     for row, (key, c) in enumerate(commands.items()):
@@ -75,3 +85,50 @@ def confirm(parent, text: str, action: str = "Delete") -> bool:
     ok = dlg.run() == Gtk.ResponseType.OK
     dlg.destroy()
     return ok
+
+
+def _widget_filter():
+    f = Gtk.FileFilter()
+    f.set_name("Pickit widgets")
+    f.add_pattern("*.pickit")
+    f.add_mime_type("application/x-pickit-widget")
+    return f
+
+
+def export_dialog(parent, widget_id: str) -> Path | None:
+    """Save a widget as a .pickit file. Returns the path, or None if cancelled."""
+    from . import share, store
+    manifest = store.load(widget_id)
+    chooser = Gtk.FileChooserNative.new("Export widget", parent, Gtk.FileChooserAction.SAVE, "_Export", "_Cancel")
+    chooser.set_do_overwrite_confirmation(True)
+    chooser.set_current_name(share.default_filename(manifest["name"]))
+    chooser.add_filter(_widget_filter())
+    path = Path(chooser.get_filename()) if chooser.run() == Gtk.ResponseType.ACCEPT else None
+    chooser.destroy()
+    if path:
+        try:
+            share.export_widget(widget_id, path)
+        except OSError as e:
+            error_dialog(parent, "Could not export the widget", str(e))
+            return None
+    return path
+
+
+def choose_widget_file(parent) -> str | None:
+    chooser = Gtk.FileChooserNative.new("Import widget", parent, Gtk.FileChooserAction.OPEN, "_Import", "_Cancel")
+    chooser.add_filter(_widget_filter())
+    everything = Gtk.FileFilter()
+    everything.set_name("All files")
+    everything.add_pattern("*")
+    chooser.add_filter(everything)
+    path = chooser.get_filename() if chooser.run() == Gtk.ResponseType.ACCEPT else None
+    chooser.destroy()
+    return path
+
+
+def error_dialog(parent, title: str, message: str):
+    dlg = Gtk.MessageDialog(transient_for=parent, modal=True, message_type=Gtk.MessageType.ERROR,
+                            buttons=Gtk.ButtonsType.CLOSE, text=title)
+    dlg.format_secondary_text(message)
+    dlg.run()
+    dlg.destroy()

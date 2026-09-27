@@ -1,0 +1,137 @@
+{
+ "name": "System Info",
+ "engine": "native",
+ "width": 300,
+ "height": 188,
+ "position": "bottom-left",
+ "commands": {
+  "s": {
+   "cmd": ". /etc/os-release 2>/dev/null; echo \"os=${PRETTY_NAME:-Linux}\"; echo \"user=$(id -un)\"; echo \"host=$(cat /proc/sys/kernel/hostname)\"; echo \"kernel=$(uname -r)\"; echo \"up=$(cut -d' ' -f1 /proc/uptime)\"; echo \"load=$(cut -d' ' -f1-3 /proc/loadavg)\"; echo \"procs=$(ls -d /proc/[0-9]* | wc -l)\"",
+   "interval": 60.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "column",
+    "children": [
+     {
+      "type": "label",
+      "text": "{s.os|default:Linux}",
+      "size": 15,
+      "weight": "semibold",
+      "color": "#f4f1ea",
+      "ellipsize": true
+     },
+     {
+      "type": "label",
+      "text": "{s.user}@{s.host}",
+      "size": 11,
+      "color": "#f0a64a"
+     }
+    ],
+    "spacing": 2
+   },
+   {
+    "type": "column",
+    "children": [
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "Uptime",
+        "size": 12,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{s.up|duration}",
+        "size": 12,
+        "color": "#f4f1ea",
+        "ellipsize": true
+       }
+      ]
+     },
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "Kernel",
+        "size": 12,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{s.kernel}",
+        "size": 12,
+        "color": "#f4f1ea",
+        "ellipsize": true
+       }
+      ]
+     },
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "Load",
+        "size": 12,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{s.load}",
+        "size": 12,
+        "color": "#f4f1ea",
+        "ellipsize": true
+       }
+      ]
+     },
+     {
+      "type": "row",
+      "children": [
+       {
+        "type": "label",
+        "text": "Processes",
+        "size": 12,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "spacer"
+       },
+       {
+        "type": "label",
+        "text": "{s.procs}",
+        "size": 12,
+        "color": "#f4f1ea",
+        "ellipsize": true
+       }
+      ]
+     }
+    ],
+    "spacing": 5
+   }
+  ],
+  "spacing": 12
+ },
+ "gallery": {
+  "order": 100,
+  "category": "System",
+  "description": "Distro, kernel, uptime and load, neofetch-style.",
+  "sample": {
+   "s": "os=Linux Mint 22.2\nuser=alex\nhost=thinkpad\nkernel=6.17.0-42-generic\nup=273600.5\nload=0.42 0.51 0.48\nprocs=312"
+  }
+ }
+}

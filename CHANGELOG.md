@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-27
+
+### Added
+- **Gallery.** Thirteen ready-made native widgets you can add in one click, with no AI backend set up: Big Clock, World Clock, Calendar (today highlighted), Day/Month/Year progress, System Meters, System Rings, CPU Graph, Network speed, CPU Temperature, Battery Ring, System Info, Now Playing and Weather. Previews are live but fed with sample data, so browsing runs nothing; adding a widget asks you to approve its commands first. **Customize** opens a gallery widget in the editor instead. Open it with the **Gallery** button, from the empty editor, or with `pickit gallery`.
+- **Share widgets as `.pickit` files.** Export from the sidebar (⋮ → Export…), the widget's right-click menu, or `pickit export <id> [FILE]`. Import with the open-file button, `pickit import FILE`, or by double-clicking the file: Pickit registers the `application/x-pickit-widget` file type in the Flatpak, the AppImage and `install.sh`. Imports are validated like AI-generated widgets and always ask for approval, with a warning that anyone can write such a file. Exports never include your approval, screen position or prompts.
+- New widgets from the gallery or a file go to a free corner instead of stacking on top of a widget that's already there.
+
+### Changed
+- Sparklines draw a flat line as soon as they have one value, instead of staying empty until the second.
+- The `duration` filter shows days for long spans ("3d 4h" instead of "76h 0m").
+
 ## [1.2.0] - 2026-09-25
 
 ### Added
@@ -78,7 +89,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/dengo07/pickit/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dengo07/pickit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dengo07/pickit/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dengo07/pickit/compare/v1.0.4...v1.1.0

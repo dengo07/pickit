@@ -1,0 +1,162 @@
+{
+ "name": "System Rings",
+ "engine": "native",
+ "width": 380,
+ "height": 156,
+ "position": "top-right",
+ "commands": {
+  "stats": {
+   "cmd": "export LC_ALL=C LC_NUMERIC=C; a=$(head -1 /proc/stat); sleep 0.5; b=$(head -1 /proc/stat); cpu=$(printf '%s\\n%s\\n' \"$a\" \"$b\" | awk '{i=$5+$6; t=0; for(n=2;n<=NF;n++) t+=$n; if(NR==1){i1=i;t1=t}else{dt=t-t1; di=i-i1; printf \"%.1f\", (dt>0? (dt-di)*100/dt : 0)}}'); mem=$(awk '/^MemTotal:/{t=$2}/^MemAvailable:/{a=$2;h=1}/^MemFree:/{f=$2}/^Buffers:/{bu=$2}/^Cached:/{c=$2}END{if(!h)a=f+bu+c; if(t>0) printf \"%.1f %d %d\", (t-a)*100/t, (t-a)/1024, t/1024}' /proc/meminfo); disk=$(df -P / | awk 'NR==2{gsub(\"%\",\"\",$5); printf \"%s %.1f %.1f\", $5, $3/1048576, $2/1048576}'); echo \"cpu=$cpu\"; echo \"mem=$mem\"; echo \"disk=$disk\"",
+   "interval": 3.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "ring",
+        "value": "{stats.cpu}",
+        "size": 92,
+        "thickness": 8,
+        "color": [
+         {
+          "when": "{stats.cpu} >= 85",
+          "value": "#f87171"
+         },
+         {
+          "when": "{stats.cpu} >= 60",
+          "value": "#f0a64a"
+         },
+         "#60a5fa"
+        ],
+        "track": "rgba(255,255,255,0.08)",
+        "children": [
+         {
+          "type": "label",
+          "text": "{stats.cpu|round|default:--}%",
+          "size": 18,
+          "weight": "semibold",
+          "color": "#f4f1ea",
+          "align": "center"
+         }
+        ]
+       },
+       {
+        "type": "label",
+        "text": "CPU",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)",
+        "align": "center"
+       }
+      ],
+      "spacing": 6
+     },
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "ring",
+        "value": "{stats.mem|word:0}",
+        "size": 92,
+        "thickness": 8,
+        "color": [
+         {
+          "when": "{stats.mem|word:0} >= 85",
+          "value": "#f87171"
+         },
+         {
+          "when": "{stats.mem|word:0} >= 60",
+          "value": "#f0a64a"
+         },
+         "#60a5fa"
+        ],
+        "track": "rgba(255,255,255,0.08)",
+        "children": [
+         {
+          "type": "label",
+          "text": "{stats.mem|word:0|round|default:--}%",
+          "size": 18,
+          "weight": "semibold",
+          "color": "#f4f1ea",
+          "align": "center"
+         }
+        ]
+       },
+       {
+        "type": "label",
+        "text": "MEMORY",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)",
+        "align": "center"
+       }
+      ],
+      "spacing": 6
+     },
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "ring",
+        "value": "{stats.disk|word:0}",
+        "size": 92,
+        "thickness": 8,
+        "color": [
+         {
+          "when": "{stats.disk|word:0} >= 85",
+          "value": "#f87171"
+         },
+         {
+          "when": "{stats.disk|word:0} >= 60",
+          "value": "#f0a64a"
+         },
+         "#60a5fa"
+        ],
+        "track": "rgba(255,255,255,0.08)",
+        "children": [
+         {
+          "type": "label",
+          "text": "{stats.disk|word:0|round|default:--}%",
+          "size": 18,
+          "weight": "semibold",
+          "color": "#f4f1ea",
+          "align": "center"
+         }
+        ]
+       },
+       {
+        "type": "label",
+        "text": "DISK",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)",
+        "align": "center"
+       }
+      ],
+      "spacing": 6
+     }
+    ],
+    "spacing": 22,
+    "halign": "center"
+   }
+  ]
+ },
+ "gallery": {
+  "order": 55,
+  "category": "System",
+  "description": "CPU, memory and disk as three gauges.",
+  "sample": {
+   "stats": "cpu=23.5\nmem=41.2 6452 15667\ndisk=63 27.1 46.0"
+  }
+ }
+}

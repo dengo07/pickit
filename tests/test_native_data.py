@@ -61,3 +61,18 @@ def test_hostile_input_is_just_data():
 def test_refs_find_data_dependencies():
     assert d.refs("{battery.capacity}% {now|time:%H}") == {"battery", "now"}
     assert d.refs([{"when": "{cpu} > 1", "value": "{w.city}"}, "x"]) == {"cpu", "w"}
+
+
+def test_duration_shows_days():
+    assert d.evaluate_ref("up|duration", {"up": "273600.5"}) == "3d 4h"
+    assert d.evaluate_ref("up|duration", {"up": 5400}) == "1h 30m"
+    assert d.evaluate_ref("up|duration", {"up": 42}) == "42s"
+
+
+def test_sparkline_draws_a_single_point():
+    import cairo
+
+    from pickit.native import draw
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 60, 20)
+    draw.sparkline(cairo.Context(surface), 60, 20, [5.0], 0, 10, (1, 1, 1, 1), None, 2)
+    assert any(surface.get_data()), "a sparkline with one value should draw a flat line"

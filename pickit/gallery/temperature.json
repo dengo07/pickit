@@ -1,0 +1,127 @@
+{
+ "name": "CPU Temperature",
+ "engine": "native",
+ "width": 200,
+ "height": 232,
+ "position": "bottom-right",
+ "commands": {
+  "t": {
+   "cmd": "for h in /sys/class/hwmon/hwmon*; do case \"$(cat $h/name 2>/dev/null)\" in coretemp|k10temp|zenpower|cpu_thermal) [ -r $h/temp1_input ] && { echo \"cpu=$(( $(cat $h/temp1_input) / 1000 ))\"; exit 0; };; esac; done; for z in /sys/class/thermal/thermal_zone*; do [ \"$(cat $z/type 2>/dev/null)\" = x86_pkg_temp ] && { echo \"cpu=$(( $(cat $z/temp) / 1000 ))\"; exit 0; }; done; t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null) && echo \"cpu=$((t / 1000))\"",
+   "interval": 5.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "ring",
+    "value": "{t.cpu}",
+    "max": 100,
+    "size": 140,
+    "thickness": 10,
+    "color": [
+     {
+      "when": "{t.cpu} >= 85",
+      "value": "#f87171"
+     },
+     {
+      "when": "{t.cpu} >= 70",
+      "value": "#f0a64a"
+     },
+     "#5eead4"
+    ],
+    "track": "rgba(255,255,255,0.08)",
+    "halign": "center",
+    "children": [
+     {
+      "type": "label",
+      "text": "{t.cpu|default:--}°",
+      "size": 34,
+      "weight": "light",
+      "color": "#f4f1ea",
+      "align": "center"
+     },
+     {
+      "type": "label",
+      "text": "CPU",
+      "size": 10,
+      "weight": "semibold",
+      "letter_spacing": 1.4,
+      "color": "rgba(244,241,234,0.62)",
+      "align": "center"
+     }
+    ]
+   },
+   {
+    "type": "sparkline",
+    "value": "{t.cpu}",
+    "points": 40,
+    "min": 25,
+    "max": 100,
+    "color": [
+     {
+      "when": "{t.cpu} >= 85",
+      "value": "#f87171"
+     },
+     {
+      "when": "{t.cpu} >= 70",
+      "value": "#f0a64a"
+     },
+     "#5eead4"
+    ],
+    "line_width": 2,
+    "height": 32
+   }
+  ],
+  "spacing": 10
+ },
+ "gallery": {
+  "order": 90,
+  "category": "System",
+  "description": "Processor temperature as a gauge, with recent history.",
+  "sample": {
+   "t": [
+    "cpu=56",
+    "cpu=61",
+    "cpu=64",
+    "cpu=64",
+    "cpu=64",
+    "cpu=66",
+    "cpu=68",
+    "cpu=61",
+    "cpu=63",
+    "cpu=63",
+    "cpu=60",
+    "cpu=56",
+    "cpu=53",
+    "cpu=41",
+    "cpu=43",
+    "cpu=47",
+    "cpu=52",
+    "cpu=57",
+    "cpu=60",
+    "cpu=61",
+    "cpu=52",
+    "cpu=55",
+    "cpu=60",
+    "cpu=66",
+    "cpu=71",
+    "cpu=74",
+    "cpu=64",
+    "cpu=61",
+    "cpu=57",
+    "cpu=54",
+    "cpu=53",
+    "cpu=55",
+    "cpu=57",
+    "cpu=49",
+    "cpu=50",
+    "cpu=49",
+    "cpu=49",
+    "cpu=51",
+    "cpu=55",
+    "cpu=51"
+   ]
+  }
+ }
+}

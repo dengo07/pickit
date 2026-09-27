@@ -1,0 +1,115 @@
+{
+ "name": "CPU Graph",
+ "engine": "native",
+ "width": 300,
+ "height": 160,
+ "position": "top-right",
+ "commands": {
+  "c": {
+   "cmd": "export LC_ALL=C; a=$(head -1 /proc/stat); sleep 0.5; b=$(head -1 /proc/stat); printf '%s\\n%s\\n' \"$a\" \"$b\" | awk '{i=$5+$6; t=0; for(n=2;n<=NF;n++) t+=$n; if(NR==1){i1=i;t1=t}else{dt=t-t1; printf \"cpu=%.1f\\n\", (dt>0? (dt-(i-i1))*100/dt : 0)}}'; echo \"cores=$(nproc)\"; echo \"load=$(cut -d' ' -f1-3 /proc/loadavg)\"",
+   "interval": 2.0
+  }
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "row",
+    "children": [
+     {
+      "type": "column",
+      "children": [
+       {
+        "type": "label",
+        "text": "CPU",
+        "size": 10,
+        "weight": "semibold",
+        "letter_spacing": 1.4,
+        "color": "rgba(244,241,234,0.62)"
+       },
+       {
+        "type": "label",
+        "text": "{c.cores|default:–} cores · load {c.load|word:0|default:–}",
+        "size": 10,
+        "color": "rgba(244,241,234,0.4)"
+       }
+      ],
+      "spacing": 2,
+      "valign": "center"
+     },
+     {
+      "type": "spacer"
+     },
+     {
+      "type": "label",
+      "text": "{c.cpu|round|default:--}%",
+      "size": 30,
+      "weight": "light",
+      "color": "#f4f1ea"
+     }
+    ]
+   },
+   {
+    "type": "sparkline",
+    "value": "{c.cpu}",
+    "points": 60,
+    "min": 0,
+    "max": 100,
+    "color": "#5eead4",
+    "fill": "rgba(94,234,212,0.16)",
+    "line_width": 2,
+    "height": 64
+   }
+  ],
+  "spacing": 8
+ },
+ "gallery": {
+  "order": 70,
+  "category": "System",
+  "description": "Live CPU usage with a one-minute history.",
+  "sample": {
+   "c": [
+    "cpu=25.1\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=34.1\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=38.7\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=40.0\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=40.6\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=42.9\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=47.5\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=33.6\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=37.5\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=37.5\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=33.0\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=25.9\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=19.6\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=2.2\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=2.2\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=8.9\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=18.4\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=26.7\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=32.1\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=35.2\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=18.7\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=23.9\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=32.4\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=42.9\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=52.5\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=58.2\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=38.8\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=34.1\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=27.4\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=22.1\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=20.7\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=23.3\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=27.8\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=12.3\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=14.0\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=13.7\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=13.5\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=16.4\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=24.0\ncores=16\nload=1.42 1.10 0.98",
+    "cpu=16.3\ncores=16\nload=1.42 1.10 0.98"
+   ]
+  }
+ }
+}

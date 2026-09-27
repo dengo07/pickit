@@ -9,6 +9,8 @@ Pickit runs AI-generated code on your desktop, so its safety model is worth unde
 - **Commands run as your user**, through `bash -c`, with a 20-second timeout. Treat approving a command exactly like pasting it into your terminal.
 - **Network:** widget pages can load resources from the internet like any web page. Cross-origin `fetch()` is blocked by CORS, which is why data comes through approved commands instead.
 - **Flatpak:** the Flatpak needs permission to run commands on the host (`org.freedesktop.Flatpak`), because running your approved commands there is the app's purpose. The sandbox therefore does not isolate approved commands.
+- **Imported widgets** (`.pickit` files) are treated like AI-generated ones: validated against the same whitelist, stripped of any approval they claim to carry, and their commands shown for approval with a warning that anyone can write such a file. An imported HTML widget can load web resources like any generated HTML widget.
+- **Gallery widgets** ship with Pickit and are reviewed like code, but they also ask for approval before their commands run. Previews in the gallery use sample data and run nothing.
 - **API keys** are stored in `~/.config/pickit/config.json` with mode `0600`. You can use the `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` environment variables instead.
 - **Where your prompts go:** to Anthropic with Claude Code or the Anthropic API; to OpenRouter **and the provider running the model you picked** with OpenRouter (check that provider's data policy, especially for free models); nowhere with Ollama, which runs on your computer. The prompt contains your widget description and, when refining, the widget's current files and commands.
 
@@ -22,6 +24,7 @@ Examples of what we want to hear about:
 
 - A way for widget HTML/JS to run commands that aren't declared or approved
 - A way to change a widget's commands without triggering re-approval
+- A `.pickit` file that runs commands, or gets past validation, without the user approving it
 - Flaws in how commands, API keys or widget files are handled
 
 You'll get a reply within a week. Supported versions: the latest release.
