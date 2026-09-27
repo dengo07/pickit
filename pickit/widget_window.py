@@ -196,7 +196,7 @@ class WidgetWindow(Gtk.Window):
     # --- context menu -----------------------------------------------------
     def _menu(self):
         menu = Gtk.Menu()
-        items = [("Edit with AI…", "edit"), ("Reload", "reload")]
+        items = [("Edit…", "edit"), ("Reload", "reload")]
         if self.manifest.get("commands"):
             items.append(("Review commands…", "approve"))
         items += [("Reset position", "reset"), ("Export…", "export"), None, ("Hide", "hide"), ("Delete", "delete")]

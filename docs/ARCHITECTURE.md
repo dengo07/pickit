@@ -36,6 +36,8 @@ sequenceDiagram
 | `native/spec.py` | The native component vocabulary and its validator: a strict property whitelist per component, safe CSS values, precise error paths. |
 | `native/data.py` | Data binding: command output parsing, templates, filters, conditions and choices, all in a small interpreter with no `eval`. |
 | `native/render.py`, `native/draw.py` | `NativeView`: builds GTK widgets from the tree, turns data-dependent properties into bindings that update only when their inputs change, and draws rings, bars, sparklines and rounded images with Cairo. |
+| `codeedit.py` | The Code tab's logic, without GTK: split a spec into editable text and join it back with validation, map validator errors and selected components to positions in the JSON text, and find a clicked HTML element in the page source. |
+| `code_view.py` | The code editor: a `Gtk.TextView` with JSON/HTML highlighting, undo/redo and two-space tabs (GtkSourceView isn't available in every runtime Pickit ships on). |
 | `html_view.py` | `WidgetView`: the HTML engine's WebKit view, with the JS bridge, a shared web process, crash reload and watchdog. Only imported when an HTML widget exists. |
 | `bridge.py` | The `window.widget` JS API and `CommandRunner`, which runs approved commands on their intervals in threads. |
 | `generator.py` | Builds the prompt, extracts and validates the JSON spec, and retries once with the error fed back. |
@@ -58,6 +60,8 @@ sequenceDiagram
 **Files as the IPC channel.** Every change is written to the store and then signalled by atomically replacing `~/.local/share/pickit/changed`. The daemon watches that one file and diffs a content signature per widget that ignores position. There is no D-Bus API to keep in sync, and hand-edited widgets work too.
 
 **Any model, same contract.** Every backend gets the same system prompt and must return the same JSON spec, which the generator validates. Nothing a backend returns is trusted: a bad spec gets fed back as an error for a repair attempt (two for Ollama, since small local models slip more often), and commands still need approval. Ollama's default context window (often 4k tokens) would silently cut off Pickit's ~8k-token instructions, so requests set `num_ctx` to at least 16k, more when refining a large widget. They also turn off "thinking": with `qwen3.5:9b` it took as long and produced much smaller widgets.
+
+**Select part.** In the maker's preview, the native renderer records which GTK widget each component built; with select mode on, its event box sits above its children, so a click hit-tests those widgets (the innermost one wins) instead of pressing buttons, and an outline is drawn over the result. For HTML widgets a small script outlines elements on hover and posts the clicked one's CSS path and markup through the bridge, which accepts such messages only while the maker asked for them. A Refine then includes the selected component (with its path) or element in the prompt as a SELECTED PART.
 
 **Approval by hash.** A widget's `approved_hash` is the SHA-256 of its canonicalised `commands`. Any change to a command, including one made by the model during a refine, invalidates the approval.
 

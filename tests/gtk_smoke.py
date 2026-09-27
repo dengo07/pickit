@@ -88,3 +88,38 @@ surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 60, 20)
 draw.sparkline(cairo.Context(surface), 60, 20, [5.0], 0, 10, (1, 1, 1, 1), None, 2)
 assert any(surface.get_data()), "a sparkline with one value should draw a flat line"
 print("ok: single-value sparkline draws")
+
+# "Select part": hit-testing finds the innermost component under the pointer.
+from pickit.native.render import NativeView  # noqa: E402
+
+ui = {"type": "card", "children": [{"type": "label", "text": "a", "size": 30},
+                                   {"type": "row", "children": [{"type": "ring", "value": 40, "size": 80}]}]}
+host = Gtk.OffscreenWindow()
+view = NativeView()
+host.add(view)
+view.load_widget(ui, {}, False)
+host.show_all()
+GLib.timeout_add(300, loop.quit)
+loop.run()
+picked = []
+view.set_select_mode(picked.append)
+ring = ui["children"][1]["children"][0]
+x, y, w, h = view._rect(ring)
+assert view.node_at(x + w / 2, y + 4) is ring, "clicking a ring selects the ring"
+lx, ly, lw, lh = view._rect(ui["children"][0])
+assert view.node_at(lx + lw / 2, ly + lh / 2) is ui["children"][0]
+view.set_select_mode(None)
+host.destroy()
+print("ok: select part finds the component under the pointer")
+
+# The code editor: highlighting and undo/redo.
+from pickit.code_view import CodeView  # noqa: E402
+
+editor = CodeView("json")
+editor.set_code('{"a": 1}')
+editor.get_buffer().insert(editor.get_buffer().get_end_iter(), " ")
+editor.undo()
+assert editor.get_code() == '{"a": 1}'
+editor.redo()
+assert editor.get_code() == '{"a": 1} '
+print("ok: code editor undo/redo")

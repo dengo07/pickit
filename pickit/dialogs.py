@@ -18,6 +18,7 @@ CSS = b"""
 .gallery-card { background-color: alpha(@theme_fg_color, 0.045); border-radius: 14px; padding: 12px; }
 .gallery-stage { border-radius: 10px; }
 .warning-note { color: @warning_color; }
+.selection-chip { background-color: alpha(#f0a64a, 0.16); border-radius: 8px; padding: 2px 4px 2px 10px; }
 """ % (PREVIEW_BG.encode(), ", ".join(f'"{f}"' if " " in f else f for f in MONO_FONTS.split(",")).encode())
 
 

@@ -109,4 +109,4 @@ Widgets run all day on machines of every speed, so an idle widget must cost next
 
 # Refinements
 
-If the user message includes a CURRENT WIDGET JSON, modify that widget according to the request and return the complete updated JSON object with all fields, keeping everything the user didn't ask to change. If the request switches engines ("make it native", "rewrite it in HTML"), rebuild the same design and data with the other engine and keep the commands unless they need to change.
+If the user message includes a CURRENT WIDGET JSON, modify that widget according to the request and return the complete updated JSON object with all fields, keeping everything the user didn't ask to change. If it also includes a SELECTED PART, the user clicked that component or element in the preview: "this", "it" and "here" in the request refer to it. Change that part (and its children), leave the rest untouched, and still return the complete widget. If the request switches engines ("make it native", "rewrite it in HTML"), rebuild the same design and data with the other engine and keep the commands unless they need to change.

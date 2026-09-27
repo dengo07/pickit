@@ -18,6 +18,70 @@ MAX_CRASH_RELOADS = 5  # per 10 minutes, so a page that always crashes doesn't l
 # Desktop widgets share one WebKit web process instead of one each ("related views"),
 # which is most of their memory. The trade-off: a crash or hang restarts all of them.
 SHARE_WEB_PROCESS = True
+
+# "Select part" in the maker's preview: outline elements on hover and report the clicked one.
+SELECT_JS = r"""
+(() => {
+  if (!window.__pickitSelect) {
+    const style = document.createElement("style");
+    style.textContent = ".__pk-hover{outline:2px dashed rgba(240,166,74,.95)!important;outline-offset:1px}" +
+                        ".__pk-sel{outline:2px solid #f0a64a!important;outline-offset:1px}";
+    const strip = (el) => el.classList.remove("__pk-hover", "__pk-sel");
+    const cssPath = (el) => {
+      const parts = [];
+      for (; el && el.nodeType === 1 && el !== document.documentElement; el = el.parentElement) {
+        if (el.id) { parts.unshift("#" + el.id); break; }
+        let part = el.localName;
+        const cls = [...el.classList].filter((c) => !c.startsWith("__pk")).slice(0, 2);
+        if (cls.length) part += "." + cls.join(".");
+        const siblings = el.parentElement ? [...el.parentElement.children] : [];
+        const same = siblings.filter((c) => c.localName === el.localName);
+        if (same.length > 1) part += `:nth-of-type(${same.indexOf(el) + 1})`;
+        parts.unshift(part);
+      }
+      return parts.join(" > ");
+    };
+    let hover = null, selected = null;
+    const pick = (el) => {
+      if (selected) selected.classList.remove("__pk-sel");
+      if (!el || el === document.documentElement) { selected = null; return; }
+      strip(el);
+      let html = el.outerHTML.replace(/ class=""/g, "");
+      if (html.length > 1500) html = html.slice(0, 1500) + "…";
+      selected = el;
+      el.classList.add("__pk-sel");
+      window.webkit.messageHandlers.widget.postMessage(JSON.stringify({
+        type: "select", selector: cssPath(el), tag: el.localName, html,
+        text: (el.innerText || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 40)}));
+    };
+    const over = (e) => {
+      if (hover) hover.classList.remove("__pk-hover");
+      hover = e.target;
+      hover.classList.add("__pk-hover");
+    };
+    const block = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const click = (e) => { block(e); pick(e.target); };
+    const opts = {capture: true};
+    window.__pickitSelect = {
+      on() {
+        document.head.appendChild(style);
+        document.addEventListener("mouseover", over, opts);
+        document.addEventListener("mousedown", block, opts);
+        document.addEventListener("click", click, opts);
+      },
+      off() {
+        document.removeEventListener("mouseover", over, opts);
+        document.removeEventListener("mousedown", block, opts);
+        document.removeEventListener("click", click, opts);
+        if (hover) hover.classList.remove("__pk-hover");
+        hover = null;
+      },
+      parent() { if (selected) pick(selected.parentElement); },
+      clear() { if (selected) selected.classList.remove("__pk-sel"); selected = null; },
+    };
+  }
+  return window.__pickitSelect;
+})()"""
 _shared_views: "weakref.WeakSet[WidgetView]" = weakref.WeakSet()
 
 
@@ -58,6 +122,7 @@ class WidgetView(WebKit2.WebView):
         self._watchdog = 0
         self._crashes: list[float] = []
         self.on_drag = None  # callable(button) set by the hosting window
+        self._on_select = None  # "Select part" callback in the maker preview
 
     def load_widget(self, html: str, commands: dict, run_commands: bool, base_uri: str | None = None):
         self._stop_runner()
@@ -80,6 +145,8 @@ class WidgetView(WebKit2.WebView):
         if event != WebKit2.LoadEvent.FINISHED:
             return
         self._loaded = True
+        if self._on_select:
+            self._js(f"{SELECT_JS}.on()")
         if self._run_commands:
             self._stop_runner()
             self.runner = CommandRunner(self._commands, self._deliver)
@@ -133,6 +200,25 @@ class WidgetView(WebKit2.WebView):
         js = f"window.widget && window.widget._deliver({json.dumps(key)}, {json.dumps(result)});"
         self.evaluate_javascript(js, -1, None, None, None, None, None)
 
+    # --- selecting parts (maker preview) ---------------------------------------------------
+    def set_select_mode(self, on_select):
+        """on_select(info) gets {selector, tag, html, text} for the clicked element; None turns
+        select mode off."""
+        self._on_select = on_select
+        if self._loaded:
+            self._js(f"{SELECT_JS}.{'on' if on_select else 'off'}()")
+
+    def select_parent(self):
+        self._js(f"{SELECT_JS}.parent()")
+
+    def select(self, _info=None):
+        """Only clearing is needed from outside: the page marks what the user clicked."""
+        if _info is None and self._loaded:
+            self._js(f"{SELECT_JS}.clear()")
+
+    def _js(self, code: str):
+        self.evaluate_javascript(code, -1, None, None, None, None, None)
+
     def _on_message(self, _manager, js_result):
         value = js_result.get_js_value() if hasattr(js_result, "get_js_value") else js_result
         try:
@@ -143,6 +229,8 @@ class WidgetView(WebKit2.WebView):
             self.runner.run(str(msg.get("key")))
         elif msg.get("type") == "drag" and self.on_drag:
             self.on_drag(int(msg.get("button", 0)) + 1)
+        elif msg.get("type") == "select" and self._on_select:  # only while the maker asked for it
+            self._on_select({k: str(msg.get(k, ""))[:2000] for k in ("selector", "tag", "html", "text")})
 
     def _stop_runner(self):
         if self.runner:

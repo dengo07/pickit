@@ -17,7 +17,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
 from ..bridge import CommandRunner  # noqa: E402
 from . import data as D  # noqa: E402
@@ -90,6 +90,14 @@ class NativeView(Gtk.EventBox):
         self._clock = 0
         self._last_load: tuple | None = None
         self._commands: dict = {}
+        # "Select part" in the maker's preview: which GTK widget each component built.
+        self._nodes: list[tuple[Gtk.Widget, dict]] = []
+        self._on_select = None
+        self._hover: dict | None = None
+        self.selected: dict | None = None
+        self.connect("motion-notify-event", self._on_motion)
+        self.connect("leave-notify-event", self._on_leave)
+        self.connect_after("draw", self._draw_selection)
 
     # --- lifecycle ------------------------------------------------------------------
     def load_widget(self, ui: dict, commands: dict, run_commands: bool, base_uri: str | None = None):
@@ -100,7 +108,8 @@ class NativeView(Gtk.EventBox):
             self.remove(child)
             child.destroy()
         self.data = {"now": datetime.datetime.now()}
-        self._bindings, self._styles = [], {}
+        self._bindings, self._styles, self._nodes = [], {}, []
+        self._hover = self.selected = None
         self.add(self._build(ui))
         self._flush_css()
         self._update(None)
@@ -208,6 +217,7 @@ class NativeView(Gtk.EventBox):
         props = dict(CARD_DEFAULTS, **node) if kind == "card" else node
         widget = getattr(self, f"_make_{kind}")(props)
         self._common(widget, props)
+        self._nodes.append((widget, node))
         return widget
 
     def _common(self, w, p):
@@ -463,8 +473,84 @@ class NativeView(Gtk.EventBox):
         for delay in (350, 1200):
             GLib.timeout_add(delay, lambda: (self.runner and self.runner.refresh()) and False)
 
+    # --- selecting parts (maker preview) ---------------------------------------------------
+    def set_select_mode(self, on_select):
+        """With a callback, clicks pick the component under the pointer instead of reaching
+        buttons: on_select(node). None turns select mode off."""
+        self._on_select = on_select
+        self.set_above_child(on_select is not None)
+        if on_select:
+            self.add_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self._hover = None
+        self.queue_draw()
+
+    def select(self, node: dict | None):
+        self.selected = node
+        self.queue_draw()
+
+    def _rect(self, node):
+        for widget, n in self._nodes:
+            if n is node and widget.get_mapped():
+                pos = widget.translate_coordinates(self, 0, 0)
+                if pos:
+                    alloc = widget.get_allocation()
+                    return pos[0], pos[1], alloc.width, alloc.height
+        return None
+
+    def node_at(self, x: float, y: float) -> dict | None:
+        """The innermost visible component at (x, y), in this view's coordinates."""
+        best, best_area = None, None
+        for widget, node in self._nodes:
+            if not widget.get_mapped():
+                continue
+            pos = widget.translate_coordinates(self, 0, 0)
+            alloc = widget.get_allocation()
+            if pos and pos[0] <= x < pos[0] + alloc.width and pos[1] <= y < pos[1] + alloc.height:
+                area = alloc.width * alloc.height
+                # Children are recorded before their parents, so on a tie (a component that
+                # fills its parent exactly) the first one found, the innermost, wins.
+                if best_area is None or area < best_area:
+                    best, best_area = node, area
+        return best
+
+    def _on_motion(self, _w, event):
+        if self._on_select:
+            node = self.node_at(event.x, event.y)
+            if node is not self._hover:
+                self._hover = node
+                self.queue_draw()
+        return False
+
+    def _on_leave(self, _w, _event):
+        if self._hover is not None:
+            self._hover = None
+            self.queue_draw()
+        return False
+
+    def _draw_selection(self, _w, cr):
+        for node, fill, dash in ((self._hover, 0.0, True), (self.selected, 0.14, False)):
+            rect = self._rect(node) if node is not None else None
+            if not rect:
+                continue
+            x, y, w, h = rect
+            draw.rounded_rect(cr, x + 1, y + 1, max(w - 2, 1), max(h - 2, 1), 6)
+            if fill:
+                cr.set_source_rgba(0.94, 0.65, 0.29, fill)
+                cr.fill_preserve()
+            cr.set_source_rgba(0.94, 0.65, 0.29, 0.95)
+            cr.set_line_width(2)
+            cr.set_dash([5, 3] if dash else [])
+            cr.stroke()
+        return False
+
     # --- input ------------------------------------------------------------------------
     def _on_press(self, _box, event):
+        if self._on_select and event.button == 1:
+            node = self.node_at(event.x, event.y)
+            if node is not None:
+                self.select(node)
+                self._on_select(node)
+            return True
         if event.button == 1 and self.on_drag:
             self.on_drag(1)  # plain left-drag anywhere (except buttons) moves the widget
             return True

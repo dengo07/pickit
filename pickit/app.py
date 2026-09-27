@@ -12,7 +12,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk, Pango  # noqa: E402
 
-from . import autostart, backends, config, generator, runtime, share, store  # noqa: E402
+from . import autostart, backends, codeedit, config, generator, runtime, share, store  # noqa: E402
+from .code_view import CodeView  # noqa: E402
 from .dialogs import (  # noqa: E402
     MONO_FONTS,
     PREVIEW_BG,
@@ -304,6 +305,26 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.mode_label.set_use_markup(True)
         main.pack_start(self.mode_label, False, False, 0)
 
+        # The part of the widget picked with "Select part"; Refine then applies to it.
+        self.selection: dict | None = None
+        self.chip = Gtk.Box(spacing=4, no_show_all=True)
+        self.chip.get_style_context().add_class("selection-chip")
+        self.chip_label = label()
+        self.chip_label.set_line_wrap(False)
+        self.chip_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.chip.pack_start(self.chip_label, True, True, 0)
+        for icon, tip, handler in (("go-up-symbolic", "Select the part around it", self._select_parent),
+                                   ("text-x-generic-symbolic", "Show in code", self._show_selection_in_code),
+                                   ("window-close-symbolic", "Clear the selection", self._clear_selection)):
+            b = Gtk.Button.new_from_icon_name(icon, Gtk.IconSize.BUTTON)
+            b.set_tooltip_text(tip)
+            b.get_style_context().add_class("flat")
+            b.connect("clicked", lambda _b, h=handler: h())
+            self.chip.pack_start(b, False, False, 0)
+            b.show()
+        self.chip_label.show()
+        main.pack_start(self.chip, False, False, 0)
+
         self.prompt = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, top_margin=8, bottom_margin=8,
                                    left_margin=8, right_margin=8)
         self.prompt.connect("key-press-event", self._on_prompt_key)
@@ -365,7 +386,21 @@ class MakerWindow(Gtk.ApplicationWindow):
         bg.add(stack_box)
         preview_scroll = Gtk.ScrolledWindow()
         preview_scroll.add(bg)
-        main.pack_start(preview_scroll, True, True, 0)
+
+        self.code_dirty = False
+        self.view_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, transition_duration=120)
+        self.view_stack.add_titled(preview_scroll, "preview", "Preview")
+        self.view_stack.add_titled(self._build_code_page(), "code", "Code")
+        self.view_stack.connect("notify::visible-child-name", self._on_view_switched)
+        self.view_bar = Gtk.Box(spacing=8)
+        self.view_bar.pack_start(Gtk.StackSwitcher(stack=self.view_stack), False, False, 0)
+        self.select_btn = Gtk.ToggleButton(label="Select part", tooltip_text=(
+            "Click a part of the widget in the preview, then describe what to change about it"))
+        self.select_btn.connect("toggled", self._on_select_toggled)
+        self.view_bar.pack_end(self.select_btn, False, False, 0)
+        main.pack_start(self.view_bar, False, False, 0)
+        main.pack_start(self.view_stack, True, True, 0)
+        self.connect("key-press-event", self._on_window_key)
 
         self.info = label()
         self.info.get_style_context().add_class("dim")
@@ -390,8 +425,12 @@ class MakerWindow(Gtk.ApplicationWindow):
 
     # --- editor state -------------------------------------------------------
     def reset_editor(self):
-        if self.busy:
+        if self.busy or not self._can_drop_code_edits():
             return
+        self.code_dirty = False
+        self._clear_selection()
+        self.select_btn.set_active(False)
+        self.view_stack.set_visible_child_name("preview")
         self.draft, self.draft_approved, self.editing_id, self.prompts = None, False, None, []
         self.auto_place = False
         self.prompt.get_buffer().set_text("")
@@ -404,8 +443,10 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.prompt.grab_focus()
 
     def edit(self, widget_id: str):
-        if self.busy:
+        if self.busy or not self._can_drop_code_edits():
             return
+        self.code_dirty = False
+        self._clear_selection()
         manifest = store.load(widget_id)
         self.editing_id = widget_id
         self.draft = store.to_spec(manifest)
@@ -413,7 +454,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.prompts = []
         self.prompt.get_buffer().set_text("")
         self._show_preview()
-        self.status.set_text("Describe what to change, then press Refine.")
+        self.status.set_text("Describe what to change, then press Refine. Select part picks one piece of it.")
         self.present()
         self.prompt.grab_focus()
 
@@ -432,6 +473,8 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.generate_btn.set_sensitive(not self.busy)
         self.commands_btn.set_visible(has and bool(self.draft.get("commands")))
         self.examples.set_visible(not has)
+        self.view_bar.set_sensitive(has and not self.busy)
+        self.code_page.set_sensitive(has and not self.busy)
 
     def _drop_preview(self):
         if self.preview is not None:
@@ -465,6 +508,16 @@ class MakerWindow(Gtk.ApplicationWindow):
         else:
             view.load_widget(spec["html"], spec["commands"], self.draft_approved)
         view.show_all()
+        view.set_select_mode(self._on_part_selected if self.select_btn.get_active() else None)
+        if self.selection and self.selection["kind"] == "native":
+            if codeedit.node_path(spec["ui"], self.selection["node"]) is None:
+                self._clear_selection()  # that component no longer exists
+            else:
+                view.select(self.selection["node"])
+        elif self.selection:
+            self._clear_selection()  # the page was reloaded
+        if not self.code_dirty:
+            self._fill_code()
         kind = "Native (GTK)" if engine == "native" else "HTML (WebKit)"
         n = len(spec["commands"])
         if n:
@@ -494,10 +547,11 @@ class MakerWindow(Gtk.ApplicationWindow):
     def generate(self):
         buf = self.prompt.get_buffer()
         text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
-        if not text or self.busy:
+        if not text or self.busy or not self.apply_code():
             return
         self.busy = True
         current = self.draft
+        focus = self._focus() if current else None
         cfg = dict(self.app.cfg)
         engine = self.engine_combo.get_active_id() or "auto"
         self.spinner.start()
@@ -509,7 +563,7 @@ class MakerWindow(Gtk.ApplicationWindow):
                 backend = backends.from_config(cfg)  # may probe for the CLI, so not on the UI thread
                 GLib.idle_add(self.status.set_text, f"{'Refining' if current else 'Generating'} with "
                               f"{backend.name}… (this can take a minute)")
-                spec = generator.generate(backend, text, current, engine)
+                spec = generator.generate(backend, text, current, engine, focus=focus)
                 GLib.idle_add(self._on_generated, text, spec, current)
             except Exception as e:  # surfaced to the user, not fatal
                 GLib.idle_add(self._on_failed, str(e), isinstance(e, backends.SetupError))
@@ -527,6 +581,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.draft = spec
         self.prompts.append(text)
         self.prompt.get_buffer().set_text("")
+        self._clear_selection()
         self._show_preview()
         self.status.set_text("Done. Refine it with another instruction, or place it on the desktop.")
         if self.auto_place:
@@ -557,7 +612,7 @@ class MakerWindow(Gtk.ApplicationWindow):
             self._show_preview()
 
     def place(self):
-        if not self.draft:
+        if not self.draft or not self.apply_code():
             return
         manifest = store.save_spec(self.draft, self.editing_id, approved=self.draft_approved,
                                    prompt=" → ".join(self.prompts) or None)
@@ -571,6 +626,178 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.reset_editor()
         self.status.set_text(f"“{name}” is on your desktop. Alt+drag to move it; right-click for options.")
 
+    # --- code ------------------------------------------------------------------
+    def _build_code_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.code_page = page
+        self.code_tabs = Gtk.Notebook()
+        self.layout_code, self.settings_code = CodeView("json"), CodeView("json")
+        self.layout_tab = Gtk.Label(label="Layout")
+        settings_tab = Gtk.Label(label="Settings & commands")
+        for view, tab in ((self.layout_code, self.layout_tab), (self.settings_code, settings_tab)):
+            view.on_changed = self._on_code_changed
+            scroller = Gtk.ScrolledWindow()
+            scroller.add(view)
+            self.code_tabs.append_page(scroller, tab)
+        page.pack_start(self.code_tabs, True, True, 0)
+        bottom = Gtk.Box(spacing=8)
+        self.code_error = label(selectable=True)
+        self.code_error.get_style_context().add_class("warning-note")
+        self.code_revert = Gtk.Button(label="Revert", tooltip_text="Throw away your code changes")
+        self.code_revert.connect("clicked", lambda _b: self._fill_code())
+        self.code_apply = Gtk.Button(label="Apply", tooltip_text="Check the code and update the preview (Ctrl+S)")
+        self.code_apply.get_style_context().add_class("suggested-action")
+        self.code_apply.connect("clicked", lambda _b: self.apply_code())
+        bottom.pack_start(self.code_error, True, True, 0)
+        bottom.pack_end(self.code_apply, False, False, 0)
+        bottom.pack_end(self.code_revert, False, False, 0)
+        page.pack_start(bottom, False, False, 0)
+        return page
+
+    def _fill_code(self):
+        """Show the draft as code, dropping any unapplied edits."""
+        self.code_dirty = False
+        if self.draft is None:
+            self.layout_code.set_code("")
+            self.settings_code.set_code("")
+        else:
+            settings, layout = codeedit.split_spec(self.draft)
+            native = self.draft["engine"] == "native"
+            self.layout_code.set_code(layout, "json" if native else "html")
+            self.settings_code.set_code(settings)
+            self.layout_tab.set_text("Layout (ui.json)" if native else "Page (index.html)")
+        self.code_error.set_text("")
+        self._sync_code_buttons()
+
+    def _sync_code_buttons(self):
+        self.code_apply.set_sensitive(self.code_dirty)
+        self.code_revert.set_sensitive(self.code_dirty)
+
+    def _on_code_changed(self):
+        if not self.code_dirty:
+            self.code_dirty = True
+            self._sync_code_buttons()
+        self.code_error.set_text("")
+
+    def apply_code(self) -> bool:
+        """Validate the edited code and make it the draft. True if there was nothing to apply."""
+        if not self.draft or not self.code_dirty:
+            return True
+        try:
+            spec = codeedit.join_spec(self.settings_code.get_code(), self.layout_code.get_code(),
+                                      self.draft["engine"])
+        except codeedit.CodeError as e:
+            self.view_stack.set_visible_child_name("code")
+            self.code_tabs.set_current_page(0 if e.tab == "layout" else 1)
+            if e.span:
+                (self.layout_code if e.tab == "layout" else self.settings_code).show_span(*e.span)
+            self.code_error.set_text(str(e))
+            self.status.set_text("The code has a problem; see below the editor.")
+            return False
+        commands_changed = store.commands_hash(spec["commands"]) != store.commands_hash(self.draft["commands"])
+        self.draft = spec
+        if not spec["commands"]:
+            self.draft_approved = True
+        elif commands_changed:
+            self.draft_approved = approval_dialog(self, spec["name"], spec["commands"])
+        if not self.prompts or self.prompts[-1] != "Edited the code":
+            self.prompts.append("Edited the code")
+        self.code_dirty = False
+        self._show_preview()
+        self._fill_code()  # reformatted, and marks it clean
+        self.status.set_text("Code applied. Place it on the desktop, or keep editing.")
+        return True
+
+    def _on_view_switched(self, stack, _pspec):
+        if stack.get_visible_child_name() == "preview" and self.code_dirty and not self.apply_code():
+            return  # apply_code switched back to the code, with the error shown
+        if stack.get_visible_child_name() == "code" and self.select_btn.get_active():
+            self.select_btn.set_active(False)
+
+    def _can_drop_code_edits(self) -> bool:
+        return not self.code_dirty or confirm(self, "Discard your unapplied code changes?", "Discard")
+
+    def _on_window_key(self, _w, event):
+        from gi.repository import Gdk
+        if (event.state & Gdk.ModifierType.CONTROL_MASK and Gdk.keyval_to_lower(event.keyval) == Gdk.KEY_s
+                and self.view_stack.get_visible_child_name() == "code"):
+            self.apply_code()
+            return True
+        return False
+
+    # --- selecting parts ---------------------------------------------------------
+    def _on_select_toggled(self, button):
+        if button.get_active():
+            self.view_stack.set_visible_child_name("preview")
+        if self.preview is not None:
+            self.preview.set_select_mode(self._on_part_selected if button.get_active() else None)
+        if button.get_active() and not self.selection:
+            self.status.set_text("Click the part of the widget you want to change.")
+
+    def _on_part_selected(self, info):
+        if self.draft is None:
+            return
+        if isinstance(info, dict) and "type" in info:  # a native component
+            self.selection = {"kind": "native", "node": info}
+            what = codeedit.describe(info)
+        else:
+            self.selection = {"kind": "html", **info}
+            text = f" “{info['text']}”" if info.get("text") else ""
+            what = f"<{info.get('tag', 'element')}>{text}"
+        self.chip_label.set_text(f"Selected: {what}")
+        self.chip_label.set_tooltip_text(self.selection.get("selector") or what)
+        self.chip.show()
+        self.status.set_text("Describe what to change about the selected part, then press Refine.")
+        self.prompt.grab_focus()
+
+    def _clear_selection(self):
+        self.selection = None
+        self.chip.hide()
+        if self.preview is not None:
+            self.preview.select(None)
+
+    def _select_parent(self):
+        if not self.selection or not self.draft:
+            return
+        if self.selection["kind"] == "html":
+            self.preview.select_parent()  # the page reports the new selection
+            return
+        path = codeedit.node_path(self.draft["ui"], self.selection["node"])
+        if path:
+            parent = codeedit.node_at(self.draft["ui"], path[:-2])
+            self.preview.select(parent)
+            self._on_part_selected(parent)
+
+    def _show_selection_in_code(self):
+        if not self.selection or not self.draft:
+            return
+        text = self.layout_code.get_code()
+        span = None
+        if self.selection["kind"] == "native":
+            path = codeedit.node_path(self.draft["ui"], self.selection["node"])
+            span = codeedit.json_spans(text).get(path) if path is not None else None
+        else:
+            span = codeedit.find_element(text, self.selection.get("html", ""))
+        self.select_btn.set_active(False)
+        self.view_stack.set_visible_child_name("code")
+        self.code_tabs.set_current_page(0)
+        if span:
+            self.layout_code.show_span(*span)
+        else:
+            self.status.set_text("Couldn't find that part in the code (it may have been edited).")
+
+    def _focus(self) -> dict | None:
+        """The selection, as sent to the AI with a Refine."""
+        sel = self.selection
+        if not sel:
+            return None
+        if sel["kind"] == "native":
+            path = codeedit.node_path(self.draft["ui"], sel["node"])
+            if path is None:
+                return None
+            return {"kind": "native", "path": codeedit.path_label(path), "node": sel["node"]}
+        return {"kind": "html", "selector": sel.get("selector", ""), "html": sel.get("html", "")}
+
     # --- gallery, import and export ---------------------------------------------
     def open_gallery(self):
         from .gallery_ui import GalleryWindow  # builds a preview of every item, so only on demand
@@ -581,9 +808,11 @@ class MakerWindow(Gtk.ApplicationWindow):
 
     def open_spec(self, spec: dict, history: str, origin: str, note: str | None = None):
         """Load a ready-made spec (gallery item, imported file) as a new draft."""
-        if self.busy:
+        if self.busy or not self._can_drop_code_edits():
             return
         self.present()
+        self.code_dirty = False
+        self._clear_selection()
         spec["position"] = store.free_anchor(spec["position"])
         self.draft, self.editing_id, self.prompts, self.auto_place = spec, None, [history], False
         self.prompt.get_buffer().set_text("")
@@ -645,7 +874,7 @@ class MakerWindow(Gtk.ApplicationWindow):
             switch.set_tooltip_text("Show on desktop")
             switch.connect("notify::active", lambda s, _p, wid=m["id"]: self.set_enabled(wid, s.get_active()))
             edit = Gtk.Button.new_from_icon_name("document-edit-symbolic", Gtk.IconSize.BUTTON)
-            edit.set_tooltip_text("Edit with AI")
+            edit.set_tooltip_text("Edit")
             edit.connect("clicked", lambda _b, wid=m["id"]: self.edit(wid))
             more = Gtk.MenuButton(tooltip_text="More",
                                   image=Gtk.Image.new_from_icon_name("view-more-symbolic", Gtk.IconSize.BUTTON))

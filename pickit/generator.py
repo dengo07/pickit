@@ -95,16 +95,31 @@ def validate(spec: dict, engine: str = "auto") -> dict:
     return result
 
 
-def generate(backend, prompt: str, current: dict | None = None, engine: str = "auto") -> dict:
-    """Ask the backend for a widget. `current` is an existing spec to refine."""
+def focus_text(focus: dict) -> str:
+    """The part of the widget the user selected in the preview, as told to the model."""
+    if focus.get("kind") == "native":
+        what = (f"the component at {focus['path']}:\n"
+                f"{json.dumps(focus['node'], indent=2, ensure_ascii=False)}")
+    else:
+        what = f"the element `{focus['selector']}`:\n{focus['html']}"
+    return (f"SELECTED PART (the user clicked it in the preview): {what}\n"
+            "Apply the change request to this part. Keep the rest of the widget as it is, unless the "
+            "request can't be done without changing it.")
+
+
+def generate(backend, prompt: str, current: dict | None = None, engine: str = "auto",
+             focus: dict | None = None) -> dict:
+    """Ask the backend for a widget. `current` is an existing spec to refine; `focus` is the
+    part of it the user selected in the preview (see focus_text)."""
     if engine not in ENGINES:
         engine = "auto"
     if current:
         # Refining with "auto" keeps the widget's engine unless the request asks to switch.
         label = (f"auto (keep {current.get('engine', 'html')} unless the change request asks to switch)"
                  if engine == "auto" else engine)
+        selected = f"{focus_text(focus)}\n\n" if focus else ""
         user = (f"Engine: {label}\n\nCURRENT WIDGET JSON:\n{json.dumps(current, indent=2)}\n\n"
-                f"Change request: {prompt}")
+                f"{selected}Change request: {prompt}")
     else:
         user = f"Engine: {engine}\n\nCreate this widget: {prompt}"
     messages = [{"role": "user", "content": user}]

@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-27
+
+### Added
+- **Select part.** Press **Select part** above the preview and click any piece of a widget: a label, a ring, a card, or any element of an HTML widget. It gets outlined, and a chip above the prompt shows what's selected, with buttons to select the surrounding part, show it in the code, or clear it. **Refine** then sends the selected part to the AI along with your request, so "make this orange" changes just that. Tested with two free OpenRouter models: both changed only the selected ring.
+- **Code tab.** See and edit any widget's code: the layout (the native component tree as JSON, or the HTML page) and its settings and shell commands, with syntax highlighting and undo. **Apply** (Ctrl+S) validates your changes exactly like AI output and highlights the problem (for example the misspelled property) when there is one; changed commands need approval again. Unapplied edits are applied when you switch back to the preview, refine or place the widget, and Pickit asks before throwing them away.
+
+### Changed
+- The widget menu's **Edit with AI…** is now **Edit…**, since the editor also shows the code.
+
 ### Fixed
 - `pickit export`, `pickit list`, `--version` and `--help` no longer need GTK to be installed; only the commands that open windows load it.
 
@@ -92,7 +101,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/dengo07/pickit/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dengo07/pickit/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dengo07/pickit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dengo07/pickit/compare/v1.1.0...v1.1.1

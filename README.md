@@ -24,6 +24,7 @@ Pickit uses an AI model to turn your description into a working widget, then pin
 
 - **Plain-language widgets.** Clocks, system meters, weather, now playing, timers, battery gauges and more.
 - **A gallery of ready-made widgets.** Thirteen widgets you can add in one click, no AI needed: clocks, a calendar, system gauges and graphs, network speed, CPU temperature, weather and now playing.
+- **Change any part.** Press **Select part**, click a piece of the widget and say what to change about it, or open the **Code** tab and edit the widget directly.
 - **Share widgets.** Export any widget as a `.pickit` file; others open it with a double-click and approve its commands before anything runs.
 - **Part of the desktop.** Widgets sit above the wallpaper and below every window. Show Desktop doesn't hide them, they appear on every workspace, and they stay out of the taskbar and Alt+Tab.
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.
@@ -86,6 +87,15 @@ To make your own:
 3. If the widget needs live data, review the shell commands it wants to run and approve them.
 4. Refine it: *"use a serif font"*, *"add seconds"*, *"make the ring orange"*.
 5. Press **Place on desktop**.
+
+### Customize a widget
+
+<img src="docs/screenshots/select-part.png" width="720" alt="A ring of a widget selected in the preview, with the request “make this orange and a bit thicker”">
+
+- **Change one part.** Press **Select part** and click a piece of the widget in the preview: a label, a ring, a whole card. ↑ selects the part around it. Then describe the change (*"make this orange"*, *"hide this when unplugged"*) and press **Refine**. The AI changes that part and leaves the rest alone.
+- **Edit the code.** The **Code** tab shows the widget as code: its layout (the component tree, or the HTML page) and its settings and shell commands. Edit either one and press **Apply** (<kbd>Ctrl</kbd>+<kbd>S</kbd>). Pickit checks it like AI output and points at the problem if there is one. Changed commands need your approval again. The file icon on a selection jumps to its code.
+
+Open any widget on your desktop with its ✎ button in the sidebar, or **Edit…** in its right-click menu.
 
 On the desktop:
 

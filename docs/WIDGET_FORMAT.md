@@ -8,7 +8,7 @@ ui.json       native engine: the component tree
 index.html    html engine: the widget page
 ```
 
-A widget has exactly one of `ui.json` or `index.html`, depending on its engine. You can write widgets by hand, or edit generated ones. After changing files, right-click the widget and choose **Reload**.
+A widget has exactly one of `ui.json` or `index.html`, depending on its engine. The easiest way to edit one is the **Code** tab in the Pickit window, which checks your changes before applying them. You can also edit the files directly; then right-click the widget and choose **Reload**.
 
 ## Engines
 
