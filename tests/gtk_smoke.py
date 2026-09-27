@@ -79,3 +79,12 @@ loop.run()
 assert len(gallery_window.views) == len(gallery.items())
 gallery_window.destroy()
 print(f"ok: gallery window with {len(gallery.items())} previews")
+
+import cairo  # noqa: E402
+
+from pickit.native import draw  # noqa: E402
+
+surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 60, 20)
+draw.sparkline(cairo.Context(surface), 60, 20, [5.0], 0, 10, (1, 1, 1, 1), None, 2)
+assert any(surface.get_data()), "a sparkline with one value should draw a flat line"
+print("ok: single-value sparkline draws")

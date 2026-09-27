@@ -27,8 +27,6 @@ def main() -> int:
     # (Not WEBKIT_DISABLE_DMABUF_RENDERER: with WebKit 2.54+, as in the Flatpak runtime,
     # that legacy path mis-draws composited layers such as shadows and animations.)
     os.environ.setdefault("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1")
-    from gi.repository import GLib
-    GLib.set_prgname("pickit")  # WM_CLASS, so the launcher/taskbar icon matches
     args = sys.argv[1:]
     if args and args[0] in ("-V", "--version"):
         from . import __version__
@@ -50,6 +48,9 @@ def main() -> int:
         return 0
     if args and args[0] == "export":
         return _export(args[1:])
+    # Everything below opens windows. (The commands above work without GTK installed.)
+    from gi.repository import GLib
+    GLib.set_prgname("pickit")  # WM_CLASS, so the launcher/taskbar icon matches
     if args and args[0] in ("run", "stop"):
         from .daemon import DesktopDaemon, acquire_instance_lock, is_running
         if args[0] == "stop" and not is_running():

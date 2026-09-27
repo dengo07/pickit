@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- `pickit export`, `pickit list`, `--version` and `--help` no longer need GTK to be installed; only the commands that open windows load it.
+
 ## [1.3.0] - 2026-09-27
 
 ### Added

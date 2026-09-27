@@ -1,5 +1,7 @@
 import datetime
 
+import pytest
+
 from pickit.native import data as d
 
 DATA = {
@@ -70,8 +72,7 @@ def test_duration_shows_days():
 
 
 def test_sparkline_draws_a_single_point():
-    import cairo
-
+    cairo = pytest.importorskip("cairo")  # the GTK smoke test covers it where cairo isn't installed
     from pickit.native import draw
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 60, 20)
     draw.sparkline(cairo.Context(surface), 60, 20, [5.0], 0, 10, (1, 1, 1, 1), None, 2)
