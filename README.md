@@ -25,6 +25,7 @@ Pickit uses an AI model to turn your description into a working widget, then pin
 - **Plain-language widgets.** Clocks, system meters, weather, now playing, timers, battery gauges and more.
 - **A gallery of ready-made widgets.** Thirteen widgets you can add in one click, no AI needed: clocks, a calendar, system gauges and graphs, network speed, CPU temperature, weather and now playing.
 - **Change any part.** Press **Select part**, click a piece of the widget and say what to change about it, or open the **Code** tab and edit the widget directly.
+- **One theme for all widgets.** Pick a preset or your own colors, corner radius and font, in dark, light or following the desktop, and every widget restyles at once. The **inspector** changes a part's colors, sizes and text by hand, no AI needed.
 - **Share widgets.** Export any widget as a `.pickit` file; others open it with a double-click and approve its commands before anything runs.
 - **Part of the desktop.** Widgets sit above the wallpaper and below every window. Show Desktop doesn't hide them, they appear on every workspace, and they stay out of the taskbar and Alt+Tab.
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.
@@ -93,6 +94,9 @@ To make your own:
 <img src="docs/screenshots/select-part.png" width="720" alt="A ring of a widget selected in the preview, with the request “make this orange and a bit thicker”">
 
 - **Change one part.** Press **Select part** and click a piece of the widget in the preview: a label, a ring, a whole card. ↑ selects the part around it. Then describe the change (*"make this orange"*, *"hide this when unplugged"*) and press **Refine**. The AI changes that part and leaves the rest alone.
+- **Fine-tune it by hand.** When a part of a native widget is selected, the inspector next to the preview shows its properties: pick a color (or one of the theme's colors, so it follows theme changes), set a size, switch a property on or off. **Add property** sets one that isn't set yet, and × goes back to the default. The preview updates as you go.
+- **Theme all your widgets.** Press **Theme** in the header: choose a preset (Charcoal, Graphite, Forest or Paper), dark, light or **Follow the desktop**, and change any color, the corner radius or the font. A live preview shows the result; **Apply** restyles every widget on your desktop. Widgets made before Pickit 1.5.0 keep their own colors.
+- **Undo any change.** **Undo** and **Redo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) step through AI refines, inspector changes and code edits. Pickit keeps the last 10 saved versions of every widget, so Undo also works after you reopen one.
 - **Edit the code.** The **Code** tab shows the widget as code: its layout (the component tree, or the HTML page) and its settings and shell commands. Edit either one and press **Apply** (<kbd>Ctrl</kbd>+<kbd>S</kbd>). Pickit checks it like AI output and points at the problem if there is one. Changed commands need your approval again. The file icon on a selection jumps to its code.
 
 Open any widget on your desktop with its ✎ button in the sidebar, or **Edit…** in its right-click menu.
@@ -102,6 +106,9 @@ On the desktop:
 | Action | How |
 |---|---|
 | Move a widget | <kbd>Alt</kbd>+drag, or drag its handle area |
+| Keep it from moving | Right-click → **Lock position**, or lock them all in **Settings** |
+| Let clicks pass through it | Right-click → **Click-through** (turn it off from ⋮ in Pickit's sidebar) |
+| Put it on another screen | Right-click → **Move to monitor** (with two or more monitors) |
 | Edit, reload, hide or delete | Right-click the widget |
 | Show or hide widgets | The switches in Pickit's sidebar |
 | Share a widget | Right-click it → **Export…**, or ⋮ → **Export…** in the sidebar |
@@ -143,15 +150,19 @@ flowchart LR
 - A separate **desktop daemon** owns the widget windows. It starts at login and picks up changes as soon as you save them, which is why widgets survive closing the app.
 - Widgets can only run the shell commands listed in their manifest, and only after you approve them. See [SECURITY.md](SECURITY.md).
 
-More detail: [architecture](docs/ARCHITECTURE.md) · [widget format and JS API](docs/WIDGET_FORMAT.md) · [packaging](docs/PACKAGING.md)
+More detail: [developer guide](docs/DEVELOPER_GUIDE.md) · [architecture](docs/ARCHITECTURE.md) · [widget format and JS API](docs/WIDGET_FORMAT.md) · [packaging](docs/PACKAGING.md)
 
 ## Compatibility
 
-| Desktop | Status |
-|---|---|
-| Cinnamon (X11) | ✅ Tested |
-| MATE, Xfce, Budgie, KDE Plasma, GNOME (X11) | Expected to work; please report issues |
-| Wayland sessions | Runs through XWayland automatically; untested |
+| Desktop | How widgets are shown | Status |
+|---|---|---|
+| Cinnamon (X11) | X11 desktop-layer windows | ✅ Tested |
+| Cinnamon (Wayland) | X11 windows through XWayland | ✅ Reported working |
+| KDE Plasma, Hyprland, Sway, COSMIC, niri, labwc (Wayland) | Native Wayland layer-shell surfaces | ✅ Tested on Sway; others use the same protocol, please report issues |
+| GNOME (Wayland) | X11 windows through XWayland (GNOME has no layer-shell) | Expected to work; please report issues |
+| MATE, Xfce, Budgie, KDE Plasma (X11) | X11 desktop-layer windows | Expected to work; please report issues |
+
+On Wayland, Pickit uses the compositor's layer-shell protocol when it has one: widgets are then real desktop-layer surfaces, above the wallpaper and below every window. Otherwise it falls back to X11 windows through XWayland. `~/.local/share/pickit/daemon.log` says which one it picked. To force a choice, start the widgets with `PICKIT_WIDGET_BACKEND=x11` or `=layer-shell`.
 
 Widgets need a compositing window manager for transparency. Most desktops have one enabled by default; on Xfce, turn it on in Window Manager Tweaks.
 
@@ -193,6 +204,7 @@ Run from source on Debian, Ubuntu or Mint:
 
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+sudo apt install gir1.2-gtklayershell-0.1   # optional: native Wayland widgets
 git clone https://github.com/dengo07/pickit && cd pickit
 python3 -m pickit            # optional: ./install.sh adds a menu entry
 pip install anthropic        # only needed for the Anthropic API backend

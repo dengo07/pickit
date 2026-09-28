@@ -47,6 +47,32 @@ view.load_widget("<html><body>hi</body></html>", {}, False)
 GLib.timeout_add(1000, loop.quit)
 loop.run()
 print("ok: HTML engine still works")
+
+# HTML widgets get the theme as CSS variables, and follow changes live.
+from pickit import theme as _theme  # noqa: E402
+
+page = "<html><body><div id=d style='color: var(--pickit-accent)'>x</div></body></html>"
+view.load_widget(page, {}, False)
+GLib.timeout_add(800, loop.quit)
+loop.run()
+colors = []
+
+
+def read_color():
+    def done(v, result):
+        colors.append(v.evaluate_javascript_finish(result).to_string())
+        loop.quit()
+    view.evaluate_javascript("getComputedStyle(document.getElementById('d')).color", -1, None, None, None, done)
+    loop.run()
+
+
+read_color()
+view.set_theme(_theme.tokens({"preset": "graphite"}))
+GLib.timeout_add(300, loop.quit)
+loop.run()
+read_color()
+assert colors == ["rgb(240, 166, 74)", "rgb(91, 155, 213)"], colors
+print("ok: HTML widgets get the theme as CSS variables, live")
 for w in windows:
     w.destroy()
 Gtk.main_iteration_do(False)
@@ -123,3 +149,91 @@ assert editor.get_code() == '{"a": 1}'
 editor.redo()
 assert editor.get_code() == '{"a": 1} '
 print("ok: code editor undo/redo")
+
+# Rings and bars ease to new values, only while animations are enabled.
+import time  # noqa: E402
+
+host = Gtk.OffscreenWindow()
+view = NativeView()
+host.add(view)
+view.load_widget({"type": "ring", "value": "{v}", "size": 80}, {}, False)
+host.show_all()
+view._deliver("v", {"out": "20", "code": 0})
+GLib.timeout_add(200, loop.quit)
+loop.run()
+area = [w for w, n in view._nodes if n["type"] == "ring"][0]
+settings = Gtk.Settings.get_default()
+settings.props.gtk_enable_animations = True
+view._deliver("v", {"out": "80", "code": 0})
+Gtk.main_iteration_do(False)
+assert area.tween.target == 0.8 and area.tween.shown < 0.8, "the ring should start moving, not jump"
+end = time.monotonic() + 1.5
+while area.tween.tick and time.monotonic() < end:
+    Gtk.main_iteration_do(False)
+assert abs(area.tween.shown - 0.8) < 1e-6, f"the ring should end at its value, not {area.tween.shown}"
+settings.props.gtk_enable_animations = False
+view._deliver("v", {"out": "30", "code": 0})
+assert area.tween.shown == 0.3, "with animations off, values jump"
+settings.props.gtk_enable_animations = True
+host.destroy()
+print("ok: rings ease to new values, and jump when animations are off")
+
+# Locked widgets don't move; the menu offers lock, click-through and (with 2+ monitors) monitors.
+locked = store.save_spec({"name": "Locked", "engine": "native", "width": 100, "height": 40, "commands": {},
+                          "ui": {"type": "label", "text": "locked"}})
+locked["locked"] = True
+store.save_manifest(locked)
+lw = WidgetWindow(locked, {}, {})
+lw.show_all()
+Gtk.main_iteration_do(False)
+lw._begin_drag()
+assert lw._drag is None, "a locked widget must not start a drag"
+lw.update_flags({**locked, "locked": False, "click_through": True})
+assert not lw.locked() and lw.manifest["click_through"]
+labels = [i.get_label() for i in lw._menu().get_children() if isinstance(i, Gtk.MenuItem)]
+assert "Lock position" in labels and "Click-through" in labels, labels
+lw.destroy()
+print("ok: lock and click-through")
+
+# Themes: themed widgets follow the theme's card and text; older widgets keep their look.
+from pickit import theme  # noqa: E402
+
+
+def card_css(view):
+    return repr(view._styles)  # the rules Pickit generates, before GTK normalizes them
+
+
+host = Gtk.OffscreenWindow()
+view = NativeView()
+host.add(view)
+host.show_all()
+paper = theme.tokens({"preset": "paper", "mode": "light", "radius": 6})
+view.set_theme(paper)
+themed_ui = {"type": "card", "children": [{"type": "label", "text": "x", "color": "{theme.accent}"}]}
+view.load_widget(themed_ui, {}, False)
+css = card_css(view)
+assert "rgba(252,249,242,0.92)" in css and "'border-radius': '6px'" in css and paper["accent"] in css, css
+view.load_widget({"type": "card", "children": [{"type": "label", "text": "x", "color": "#ffffff"}]}, {}, False)
+css = card_css(view)
+assert "rgba(18,18,24,0.78)" in css and "rgba(252,249,242" not in css, "legacy widgets keep their card"
+host.destroy()
+print("ok: themed widgets follow the theme; legacy widgets keep their look")
+
+# The property inspector builds editors for every kind of component.
+from pickit import gallery as gallery_mod  # noqa: E402
+from pickit.inspector import Inspector  # noqa: E402
+
+changes = []
+inspector = Inspector(lambda k, v: changes.append((k, v)), lambda: None)
+seen = set()
+for item in gallery_mod.items():
+    def walk(node):
+        if node.get("type") not in seen:
+            seen.add(node["type"])
+            inspector.show_node(node, theme.default_tokens(), ["playpause"])
+            assert inspector.grid.get_children(), node["type"]
+        for child in node.get("children", []):
+            walk(child)
+    walk(item.spec["ui"])
+assert not changes, "building editors must not report edits"
+print(f"ok: inspector editors for {len(seen)} component types")

@@ -16,7 +16,7 @@ Please [open an issue](https://github.com/dengo07/pickit/issues/new/choose) and 
 ## Development setup
 
 ```bash
-sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-gtklayershell-0.1
 git clone https://github.com/dengo07/pickit && cd pickit
 python3 -m venv --system-site-packages .venv && . .venv/bin/activate   # system-site for PyGObject
 pip install -e ".[api,dev]"
@@ -30,6 +30,15 @@ While you work, `pickit stop` followed by `pickit run` restarts the desktop daem
 ```bash
 ruff check .
 pytest
+xvfb-run -a python3 tests/gtk_smoke.py    # X11 widgets and the Pickit window
+```
+
+Changes to how widgets are placed or moved should also pass the Wayland smoke test, which runs in a headless Sway (`sudo apt install sway gir1.2-gtklayershell-0.1`); CI runs it the same way:
+
+```bash
+export XDG_RUNTIME_DIR=$(mktemp -d); chmod 700 "$XDG_RUNTIME_DIR"
+WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 sway -c tests/sway-headless.conf &
+WAYLAND_DISPLAY=wayland-1 GDK_BACKEND=wayland python3 tests/wayland_smoke.py
 ```
 
 - Keep pull requests focused, and describe what you tested and on which desktop.
@@ -49,6 +58,8 @@ Gallery widgets live in [`pickit/gallery/`](pickit/gallery/), one JSON file each
 Include a screenshot of it on your desktop in the pull request. The easiest way to make one: build it in Pickit, then run `pickit export <id>` and add a `gallery` object to the file.
 
 ## Project layout
+
+[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) explains every file and has recipes for common changes (a new component, filter, setting, menu action, backend or gallery widget).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the maker, the daemon and the widget store fit together, and [docs/PACKAGING.md](docs/PACKAGING.md) for the Flatpak and AppImage builds.
 

@@ -19,6 +19,7 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
+from .. import theme as themes  # noqa: E402
 from ..bridge import CommandRunner  # noqa: E402
 from . import data as D  # noqa: E402
 from . import draw  # noqa: E402
@@ -66,6 +67,42 @@ def _set_icon(image: Gtk.Image, name: str, size: int):
         image.clear()
 
 
+ANIMATION_MS = 350
+
+
+def _animations_enabled() -> bool:
+    settings = Gtk.Settings.get_default()
+    return settings is None or bool(settings.props.gtk_enable_animations)
+
+
+class _Tween:
+    """The fraction a bar or ring shows, eased toward each new value (only while it changes,
+    driven by the frame clock, and not at all if the desktop turned animations off)."""
+
+    def __init__(self, area):
+        self.area, self.shown, self.start, self.target, self.t0, self.tick = area, None, 0.0, 0.0, 0, 0
+
+    def set(self, target: float):
+        if self.shown is None or not _animations_enabled() or not self.area.get_mapped():
+            self.shown = self.target = target
+            self.area.queue_draw()
+            return
+        if target == self.target:
+            return
+        self.start, self.target, self.t0 = self.shown, target, GLib.get_monotonic_time()
+        if not self.tick:
+            self.tick = self.area.add_tick_callback(self._step)
+
+    def _step(self, _widget, _clock):
+        u = min(1.0, (GLib.get_monotonic_time() - self.t0) / (ANIMATION_MS * 1000))
+        self.shown = self.start + (self.target - self.start) * (1 - (1 - u) ** 3)  # ease-out
+        self.area.queue_draw()
+        if u >= 1.0:
+            self.tick = 0
+            return False
+        return True
+
+
 class _Binding:
     __slots__ = ("deps", "apply", "last")
 
@@ -90,6 +127,8 @@ class NativeView(Gtk.EventBox):
         self._clock = 0
         self._last_load: tuple | None = None
         self._commands: dict = {}
+        self.theme = themes.default_tokens()
+        self._card_defaults = CARD_DEFAULTS
         # "Select part" in the maker's preview: which GTK widget each component built.
         self._nodes: list[tuple[Gtk.Widget, dict]] = []
         self._on_select = None
@@ -107,18 +146,53 @@ class NativeView(Gtk.EventBox):
         for child in self.get_children():
             self.remove(child)
             child.destroy()
-        self.data = {"now": datetime.datetime.now()}
-        self._bindings, self._styles, self._nodes = [], {}, []
-        self._hover = self.selected = None
-        self.add(self._build(ui))
-        self._flush_css()
-        self._update(None)
-        self.show_all()
+        self.data = {"now": datetime.datetime.now(), "theme": self.theme}
+        self._build_tree(ui)
         if any("now" in b.deps for b in self._bindings):
             self._schedule_tick()
         if run_commands and self._commands:
             self.runner = CommandRunner(self._commands, self._deliver)
             self.runner.start()
+
+    def update_ui(self, ui: dict):
+        """Rebuild the component tree but keep the data and running commands (the inspector's
+        live edits; the commands are unchanged, so there's no reason to rerun them)."""
+        if not self._last_load:
+            return
+        self._last_load = (ui, *self._last_load[1:])
+        for child in self.get_children():
+            self.remove(child)
+            child.destroy()
+        self.data["theme"] = self.theme
+        self._build_tree(ui)
+        if any("now" in b.deps for b in self._bindings) and not self._clock:
+            self._schedule_tick()
+
+    def _build_tree(self, ui: dict):
+        self._bindings, self._styles, self._nodes = [], {}, []
+        self._hover = self.selected = None
+        themed = themes.is_themed(ui)
+        # Widgets made for themes get the theme's card look, text color and font. Older widgets
+        # keep the defaults they were designed with (often white text), so a light theme can't
+        # turn them white-on-white.
+        t = self.theme
+        self._card_defaults = (dict(CARD_DEFAULTS, background=t["card"], border=t["border"], radius=t["radius"])
+                               if themed else CARD_DEFAULTS)
+        self.add(self._build(ui))
+        if themed:
+            self._style(self, color=_safe(t["text"]),
+                        **{"font-family": f'"{t["font"]}"' if t["font"] and _safe(t["font"]) else None})
+        self._flush_css()
+        self._update(None)
+        self.show_all()
+
+    def set_theme(self, tokens: dict):
+        """Restyle with another theme. Card defaults are static styles, so this rebuilds."""
+        if tokens == self.theme:
+            return
+        self.theme = tokens
+        if self._last_load:
+            self.reload_widget()
 
     def show_sample(self, sample: dict):
         """Preview with made-up command output instead of running the commands.
@@ -214,7 +288,7 @@ class NativeView(Gtk.EventBox):
     # --- building -----------------------------------------------------------------------
     def _build(self, node: dict) -> Gtk.Widget:
         kind = node["type"]
-        props = dict(CARD_DEFAULTS, **node) if kind == "card" else node
+        props = dict(self._card_defaults, **node) if kind == "card" else node
         widget = getattr(self, f"_make_{kind}")(props)
         self._common(widget, props)
         self._nodes.append((widget, node))
@@ -355,13 +429,14 @@ class NativeView(Gtk.EventBox):
         state = {}
         thickness = int(D.to_number(p.get("thickness")) or 6)
         area = self._area(-1, thickness, lambda cr, w, h: draw.bar(
-            cr, w, h, draw.fraction(state.get("value"), state.get("max", 100)),
+            cr, w, h, area.tween.shown or 0.0,
             draw.rgba(state.get("color"), (1, 1, 1, 0.9)), draw.rgba(state.get("track"), (1, 1, 1, 0.15)),
             D.to_number(p.get("radius")) if "radius" in p else thickness / 2), hexpand=True)
+        area.tween = _Tween(area)
 
         def upd(v):
-            state.update(value=D.to_number(v.get("value")), max=D.to_number(v.get("max")) or 100,
-                         color=v.get("color"), track=v.get("track"))
+            state.update(color=v.get("color"), track=v.get("track"))
+            area.tween.set(draw.fraction(D.to_number(v.get("value")), D.to_number(v.get("max")) or 100))
             area.queue_draw()
         self._bind(p, ["value", "max", "color", "track"], upd)
         return area
@@ -370,14 +445,15 @@ class NativeView(Gtk.EventBox):
         state = {}
         size = p.get("size", 120)
         area = self._area(size, size, lambda cr, w, h: draw.ring(
-            cr, w, h, draw.fraction(state.get("value"), state.get("max", 100)),
+            cr, w, h, area.tween.shown or 0.0,
             D.to_number(p.get("thickness")) or max(4, size / 12),
             draw.rgba(state.get("color"), (0.29, 0.87, 0.5, 1)),
             draw.rgba(state.get("track"), (1, 1, 1, 0.12)), D.to_number(p.get("start")) or -90.0))
+        area.tween = _Tween(area)
 
         def upd(v):
-            state.update(value=D.to_number(v.get("value")), max=D.to_number(v.get("max")) or 100,
-                         color=v.get("color"), track=v.get("track"))
+            state.update(color=v.get("color"), track=v.get("track"))
+            area.tween.set(draw.fraction(D.to_number(v.get("value")), D.to_number(v.get("max")) or 100))
             area.queue_draw()
         self._bind(p, ["value", "max", "color", "track"], upd)
         children = p.get("children", [])

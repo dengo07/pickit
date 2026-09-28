@@ -39,6 +39,16 @@ def label(text="", **kw):
 def approval_dialog(parent, name: str, commands: dict, note: str | None = None,
                     accept: str = "Approve and run", reject: str = "Don't run commands") -> bool:
     """Ask the user to approve a widget's shell commands. Returns True if approved."""
+    dlg = build_approval_dialog(parent, name, commands, note, accept, reject)
+    dlg.show_all()
+    response = dlg.run()
+    dlg.destroy()
+    return response == Gtk.ResponseType.ACCEPT
+
+
+def build_approval_dialog(parent, name: str, commands: dict, note: str | None = None,
+                          accept: str = "Approve and run", reject: str = "Don't run commands") -> Gtk.Dialog:
+    """The approval dialog, not yet shown."""
     dlg = Gtk.Dialog(title="Approve widget commands", transient_for=parent, modal=True)
     dlg.add_button(reject, Gtk.ResponseType.REJECT)
     ok = dlg.add_button(accept, Gtk.ResponseType.ACCEPT)
@@ -71,10 +81,7 @@ def approval_dialog(parent, name: str, commands: dict, note: str | None = None,
     scroller = Gtk.ScrolledWindow(propagate_natural_height=True, max_content_height=420)
     scroller.add(grid)
     box.add(scroller)
-    dlg.show_all()
-    response = dlg.run()
-    dlg.destroy()
-    return response == Gtk.ResponseType.ACCEPT
+    return dlg
 
 
 def confirm(parent, text: str, action: str = "Delete") -> bool:

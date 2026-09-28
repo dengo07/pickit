@@ -22,7 +22,7 @@
       "size": 10,
       "weight": "semibold",
       "letter_spacing": 1.4,
-      "color": "rgba(244,241,234,0.62)"
+      "color": "{theme.muted}"
      },
      {
       "type": "spacer"
@@ -31,7 +31,7 @@
       "type": "label",
       "text": "{n.iface|default:offline}",
       "size": 10,
-      "color": "rgba(244,241,234,0.4)"
+      "color": "{theme.muted}"
      }
     ]
    },
@@ -47,13 +47,13 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.2,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "{n.down|bytes}/s",
         "size": 17,
-        "color": "#f4f1ea"
+        "color": "{theme.text}"
        }
       ],
       "spacing": 1,
@@ -86,13 +86,13 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.2,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "{n.up|bytes}/s",
         "size": 17,
-        "color": "#f4f1ea"
+        "color": "{theme.text}"
        }
       ],
       "spacing": 1,
@@ -104,7 +104,7 @@
       "value": "{n.up}",
       "points": 40,
       "min": 0,
-      "color": "#f0a64a",
+      "color": "{theme.accent}",
       "fill": "rgba(240,166,74,0.16)",
       "line_width": 2,
       "height": 40,

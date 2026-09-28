@@ -22,7 +22,7 @@
       "size": 12,
       "weight": "semibold",
       "letter_spacing": 1.4,
-      "color": "#f4f1ea"
+      "color": "{theme.text}"
      },
      {
       "type": "spacer"
@@ -31,7 +31,7 @@
       "type": "label",
       "text": "{cal.day}",
       "size": 11,
-      "color": "rgba(244,241,234,0.4)"
+      "color": "{theme.muted}"
      }
     ]
    },
@@ -43,7 +43,7 @@
       "text": "Mo",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      },
@@ -52,7 +52,7 @@
       "text": "Tu",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      },
@@ -61,7 +61,7 @@
       "text": "We",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      },
@@ -70,7 +70,7 @@
       "text": "Th",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      },
@@ -79,7 +79,7 @@
       "text": "Fr",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      },
@@ -88,7 +88,7 @@
       "text": "Sa",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      },
@@ -97,7 +97,7 @@
       "text": "Su",
       "size": 10,
       "weight": "semibold",
-      "color": "rgba(244,241,234,0.4)",
+      "color": "{theme.muted}",
       "align": "center",
       "width": 34
      }
@@ -120,7 +120,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.0}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -139,7 +139,7 @@
             "when": "{cal.today} == {cal.w.0.0}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -153,7 +153,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.1}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -172,7 +172,7 @@
             "when": "{cal.today} == {cal.w.0.1}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -186,7 +186,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.2}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -205,7 +205,7 @@
             "when": "{cal.today} == {cal.w.0.2}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -219,7 +219,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.3}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -238,7 +238,7 @@
             "when": "{cal.today} == {cal.w.0.3}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -252,7 +252,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.4}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -271,7 +271,7 @@
             "when": "{cal.today} == {cal.w.0.4}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -285,7 +285,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.5}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -304,7 +304,7 @@
             "when": "{cal.today} == {cal.w.0.5}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -318,7 +318,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.0.6}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -337,7 +337,7 @@
             "when": "{cal.today} == {cal.w.0.6}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -358,7 +358,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.0}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -377,7 +377,7 @@
             "when": "{cal.today} == {cal.w.1.0}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -391,7 +391,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.1}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -410,7 +410,7 @@
             "when": "{cal.today} == {cal.w.1.1}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -424,7 +424,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.2}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -443,7 +443,7 @@
             "when": "{cal.today} == {cal.w.1.2}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -457,7 +457,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.3}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -476,7 +476,7 @@
             "when": "{cal.today} == {cal.w.1.3}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -490,7 +490,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.4}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -509,7 +509,7 @@
             "when": "{cal.today} == {cal.w.1.4}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -523,7 +523,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.5}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -542,7 +542,7 @@
             "when": "{cal.today} == {cal.w.1.5}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -556,7 +556,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.1.6}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -575,7 +575,7 @@
             "when": "{cal.today} == {cal.w.1.6}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -596,7 +596,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.0}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -615,7 +615,7 @@
             "when": "{cal.today} == {cal.w.2.0}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -629,7 +629,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.1}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -648,7 +648,7 @@
             "when": "{cal.today} == {cal.w.2.1}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -662,7 +662,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.2}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -681,7 +681,7 @@
             "when": "{cal.today} == {cal.w.2.2}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -695,7 +695,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.3}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -714,7 +714,7 @@
             "when": "{cal.today} == {cal.w.2.3}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -728,7 +728,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.4}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -747,7 +747,7 @@
             "when": "{cal.today} == {cal.w.2.4}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -761,7 +761,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.5}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -780,7 +780,7 @@
             "when": "{cal.today} == {cal.w.2.5}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -794,7 +794,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.2.6}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -813,7 +813,7 @@
             "when": "{cal.today} == {cal.w.2.6}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -834,7 +834,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.0}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -853,7 +853,7 @@
             "when": "{cal.today} == {cal.w.3.0}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -867,7 +867,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.1}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -886,7 +886,7 @@
             "when": "{cal.today} == {cal.w.3.1}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -900,7 +900,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.2}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -919,7 +919,7 @@
             "when": "{cal.today} == {cal.w.3.2}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -933,7 +933,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.3}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -952,7 +952,7 @@
             "when": "{cal.today} == {cal.w.3.3}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -966,7 +966,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.4}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -985,7 +985,7 @@
             "when": "{cal.today} == {cal.w.3.4}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -999,7 +999,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.5}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1018,7 +1018,7 @@
             "when": "{cal.today} == {cal.w.3.5}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -1032,7 +1032,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.3.6}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1051,7 +1051,7 @@
             "when": "{cal.today} == {cal.w.3.6}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -1072,7 +1072,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.0}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1091,7 +1091,7 @@
             "when": "{cal.today} == {cal.w.4.0}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1105,7 +1105,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.1}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1124,7 +1124,7 @@
             "when": "{cal.today} == {cal.w.4.1}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1138,7 +1138,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.2}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1157,7 +1157,7 @@
             "when": "{cal.today} == {cal.w.4.2}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1171,7 +1171,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.3}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1190,7 +1190,7 @@
             "when": "{cal.today} == {cal.w.4.3}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1204,7 +1204,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.4}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1223,7 +1223,7 @@
             "when": "{cal.today} == {cal.w.4.4}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1237,7 +1237,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.5}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1256,7 +1256,7 @@
             "when": "{cal.today} == {cal.w.4.5}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -1270,7 +1270,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.4.6}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1289,7 +1289,7 @@
             "when": "{cal.today} == {cal.w.4.6}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -1311,7 +1311,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.0}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1330,7 +1330,7 @@
             "when": "{cal.today} == {cal.w.5.0}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1344,7 +1344,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.1}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1363,7 +1363,7 @@
             "when": "{cal.today} == {cal.w.5.1}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1377,7 +1377,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.2}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1396,7 +1396,7 @@
             "when": "{cal.today} == {cal.w.5.2}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1410,7 +1410,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.3}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1429,7 +1429,7 @@
             "when": "{cal.today} == {cal.w.5.3}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1443,7 +1443,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.4}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1462,7 +1462,7 @@
             "when": "{cal.today} == {cal.w.5.4}",
             "value": "#1b1b1f"
            },
-           "#f4f1ea"
+           "{theme.text}"
           ]
          }
         ]
@@ -1476,7 +1476,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.5}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1495,7 +1495,7 @@
             "when": "{cal.today} == {cal.w.5.5}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]
@@ -1509,7 +1509,7 @@
         "background": [
          {
           "when": "{cal.today} == {cal.w.5.6}",
-          "value": "#f0a64a"
+          "value": "{theme.accent}"
          },
          "transparent"
         ],
@@ -1528,7 +1528,7 @@
             "when": "{cal.today} == {cal.w.5.6}",
             "value": "#1b1b1f"
            },
-           "rgba(244,241,234,0.62)"
+           "{theme.muted}"
           ]
          }
         ]

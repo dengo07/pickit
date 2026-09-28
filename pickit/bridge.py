@@ -22,6 +22,8 @@ BRIDGE_JS = r"""
     },
     run(key) { post({type: "run", key}); },
     drag(ev) { post({type: "drag", button: ev ? ev.button : 0}); },
+    theme: {},   // the widget theme's colors, radius and font; also CSS variables --pickit-*
+    _theme(t) { this.theme = t; window.dispatchEvent(new CustomEvent("pickit-theme", {detail: t})); },
     _deliver(key, res) {
       last[key] = res;
       for (const fn of handlers[key] || []) { try { fn(res.out, res); } catch (e) { console.error(e); } }

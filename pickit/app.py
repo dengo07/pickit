@@ -13,6 +13,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk, Pango  # noqa: E402
 
 from . import autostart, backends, codeedit, config, generator, runtime, share, store  # noqa: E402
+from . import theme as themes  # noqa: E402
 from .code_view import CodeView  # noqa: E402
 from .dialogs import (  # noqa: E402
     MONO_FONTS,
@@ -25,6 +26,7 @@ from .dialogs import (  # noqa: E402
     install_css,
     label,
 )
+from .inspector import REMOVE, Inspector  # noqa: E402
 from .widget_window import engine_of, make_view  # noqa: E402
 
 APP_ID = runtime.APP_ID
@@ -150,7 +152,10 @@ class SettingsDialog(Gtk.Dialog):
                                      active=cfg.get("autostart", True))
         self.devtools = Gtk.CheckButton(label="Enable web inspector in widgets",
                                         active=cfg["developer_extras"])
+        self.lock_all = Gtk.CheckButton(label="Lock all widgets in place (no dragging)",
+                                        active=cfg.get("lock_widgets", False))
         box.pack_start(self.login, False, False, 0)
+        box.pack_start(self.lock_all, False, False, 0)
         box.pack_start(self.devtools, False, False, 0)
 
         self.backend.connect("changed", self._on_backend_changed)
@@ -240,7 +245,8 @@ class SettingsDialog(Gtk.Dialog):
 
     def apply(self, cfg: dict):
         cfg.update(self.values())
-        cfg.update({"autostart": self.login.get_active(), "developer_extras": self.devtools.get_active()})
+        cfg.update({"autostart": self.login.get_active(), "developer_extras": self.devtools.get_active(),
+                    "lock_widgets": self.lock_all.get_active()})
         autostart.set_enabled(self.login.get_active())
 
 
@@ -280,6 +286,9 @@ class MakerWindow(Gtk.ApplicationWindow):
         import_btn.connect("clicked", lambda _b: self.choose_import())
         header.pack_start(import_btn)
         self.gallery_window = None
+        theme_btn = Gtk.Button(label="Theme", tooltip_text="Colors, corners and font for all your widgets")
+        theme_btn.connect("clicked", lambda _b: self.open_theme())
+        header.pack_end(theme_btn)
 
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, position=280)
         self.add(paned)
@@ -357,6 +366,21 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.engine_combo.connect("changed", self._on_engine_changed)
         row.pack_start(self.generate_btn, False, False, 0)
         row.pack_start(self.engine_combo, False, False, 0)
+        # Undo/redo whole versions of the widget: AI refines, code edits, earlier saved versions.
+        self.undo_stack: list[dict] = []
+        self.redo_stack: list[dict] = []
+        self.approved_hashes: set[str] = set()
+        history = Gtk.Box()
+        history.get_style_context().add_class("linked")
+        self.undo_btn = Gtk.Button.new_from_icon_name("edit-undo-symbolic", Gtk.IconSize.BUTTON)
+        self.undo_btn.set_tooltip_text("Undo the last change to the widget (Ctrl+Z)")
+        self.undo_btn.connect("clicked", lambda _b: self.undo())
+        self.redo_btn = Gtk.Button.new_from_icon_name("edit-redo-symbolic", Gtk.IconSize.BUTTON)
+        self.redo_btn.set_tooltip_text("Redo (Ctrl+Shift+Z)")
+        self.redo_btn.connect("clicked", lambda _b: self.redo())
+        history.pack_start(self.undo_btn, False, False, 0)
+        history.pack_start(self.redo_btn, False, False, 0)
+        row.pack_start(history, False, False, 0)
         row.pack_start(self.spinner, False, False, 0)
         row.pack_start(self.status, True, True, 0)
         main.pack_start(row, False, False, 0)
@@ -389,7 +413,17 @@ class MakerWindow(Gtk.ApplicationWindow):
 
         self.code_dirty = False
         self.view_stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, transition_duration=120)
-        self.view_stack.add_titled(preview_scroll, "preview", "Preview")
+        self.inspector = Inspector(self._on_inspector_change, self._show_selection_in_code)
+        inspector_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+        inspector_scroll.set_size_request(300, -1)
+        inspector_scroll.add(self.inspector)
+        self.inspector_revealer = Gtk.Revealer(transition_type=Gtk.RevealerTransitionType.SLIDE_LEFT)
+        self.inspector_revealer.add(inspector_scroll)
+        self._inspector_timer, self._inspector_pending, self._edit_run = 0, None, None
+        preview_page = Gtk.Box()
+        preview_page.pack_start(preview_scroll, True, True, 0)
+        preview_page.pack_start(self.inspector_revealer, False, False, 0)
+        self.view_stack.add_titled(preview_page, "preview", "Preview")
         self.view_stack.add_titled(self._build_code_page(), "code", "Code")
         self.view_stack.connect("notify::visible-child-name", self._on_view_switched)
         self.view_bar = Gtk.Box(spacing=8)
@@ -432,6 +466,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.select_btn.set_active(False)
         self.view_stack.set_visible_child_name("preview")
         self.draft, self.draft_approved, self.editing_id, self.prompts = None, False, None, []
+        self.undo_stack, self.redo_stack, self.approved_hashes = [], [], set()
         self.auto_place = False
         self.prompt.get_buffer().set_text("")
         self._drop_preview()
@@ -451,6 +486,9 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.editing_id = widget_id
         self.draft = store.to_spec(manifest)
         self.draft_approved = store.is_approved(manifest)
+        self.undo_stack = [v["spec"] for v in store.versions(widget_id)]
+        self.redo_stack, self.approved_hashes = [], set()
+        self._note_approved()
         self.prompts = []
         self.prompt.get_buffer().set_text("")
         self._show_preview()
@@ -471,6 +509,8 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.place_btn.set_sensitive(has and not self.busy)
         self.discard_btn.set_sensitive(has and not self.busy)
         self.generate_btn.set_sensitive(not self.busy)
+        self.undo_btn.set_sensitive(has and bool(self.undo_stack) and not self.busy)
+        self.redo_btn.set_sensitive(has and bool(self.redo_stack) and not self.busy)
         self.commands_btn.set_visible(has and bool(self.draft.get("commands")))
         self.examples.set_visible(not has)
         self.view_bar.set_sensitive(has and not self.busy)
@@ -488,6 +528,7 @@ class MakerWindow(Gtk.ApplicationWindow):
             # WebKit's transparent pixels don't blend with parent GTK widgets, so an HTML
             # preview gets an opaque backdrop matching the preview area.
             self.preview = make_view(engine, self.app.cfg, desktop=False, background=PREVIEW_BG)
+            self.preview.set_theme(self.theme_tokens())
             self.preview_engine = engine
             self.preview.set_halign(Gtk.Align.CENTER)
             self.preview.set_valign(Gtk.Align.CENTER)
@@ -578,7 +619,9 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.draft_approved = True
         elif not (self.draft_approved and store.commands_hash(prev_cmds) == store.commands_hash(spec["commands"])):
             self.draft_approved = approval_dialog(self, spec["name"], spec["commands"])
+        self._remember(previous)
         self.draft = spec
+        self._note_approved()
         self.prompts.append(text)
         self.prompt.get_buffer().set_text("")
         self._clear_selection()
@@ -695,11 +738,14 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.status.set_text("The code has a problem; see below the editor.")
             return False
         commands_changed = store.commands_hash(spec["commands"]) != store.commands_hash(self.draft["commands"])
+        self._remember(self.draft)
         self.draft = spec
         if not spec["commands"]:
             self.draft_approved = True
         elif commands_changed:
-            self.draft_approved = approval_dialog(self, spec["name"], spec["commands"])
+            self.draft_approved = (store.commands_hash(spec["commands"]) in self.approved_hashes
+                                   or approval_dialog(self, spec["name"], spec["commands"]))
+        self._note_approved()
         if not self.prompts or self.prompts[-1] != "Edited the code":
             self.prompts.append("Edited the code")
         self.code_dirty = False
@@ -719,11 +765,50 @@ class MakerWindow(Gtk.ApplicationWindow):
 
     def _on_window_key(self, _w, event):
         from gi.repository import Gdk
-        if (event.state & Gdk.ModifierType.CONTROL_MASK and Gdk.keyval_to_lower(event.keyval) == Gdk.KEY_s
-                and self.view_stack.get_visible_child_name() == "code"):
+        if not event.state & Gdk.ModifierType.CONTROL_MASK:
+            return False
+        key = Gdk.keyval_to_lower(event.keyval)
+        if key == Gdk.KEY_s and self.view_stack.get_visible_child_name() == "code":
             self.apply_code()
             return True
+        if key in (Gdk.KEY_z, Gdk.KEY_y) and not isinstance(self.get_focus(), CodeView):  # it has its own
+            redo = key == Gdk.KEY_y or event.state & Gdk.ModifierType.SHIFT_MASK
+            self.redo() if redo else self.undo()
+            return True
         return False
+
+    # --- undo / redo ---------------------------------------------------------------
+    def _remember(self, previous: dict | None):
+        """A new version of the draft replaces `previous`: make it undoable."""
+        if previous is not None:
+            self.undo_stack = (self.undo_stack + [previous])[-30:]
+            self.redo_stack = []
+
+    def _note_approved(self):
+        if self.draft and self.draft_approved and self.draft.get("commands"):
+            self.approved_hashes.add(store.commands_hash(self.draft["commands"]))
+
+    def undo(self):
+        self._step_history(self.undo_stack, self.redo_stack, "Undone. Press Redo (Ctrl+Shift+Z) to bring the "
+                                                             "change back.")
+
+    def redo(self):
+        self._step_history(self.redo_stack, self.undo_stack, "Redone.")
+
+    def _step_history(self, source: list, target: list, message: str):
+        if self.busy or not source or self.draft is None or not self._can_drop_code_edits():
+            return
+        target.append(self.draft)
+        self.draft = source.pop()
+        self.code_dirty = False
+        self._clear_selection()
+        commands = self.draft.get("commands") or {}
+        # Going back to commands you already approved doesn't ask again.
+        self.draft_approved = (not commands or store.commands_hash(commands) in self.approved_hashes
+                               or approval_dialog(self, self.draft["name"], commands))
+        self._note_approved()
+        self._show_preview()
+        self.status.set_text(message + (" Save changes to keep it." if self.editing_id else ""))
 
     # --- selecting parts ---------------------------------------------------------
     def _on_select_toggled(self, button):
@@ -744,6 +829,14 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.selection = {"kind": "html", **info}
             text = f" “{info['text']}”" if info.get("text") else ""
             what = f"<{info.get('tag', 'element')}>{text}"
+        self._edit_run = None
+        if self.selection["kind"] == "native":
+            actions = [k for k, c in self.draft["commands"].items() if c.get("interval", 0) == 0]
+            self.inspector.show_node(info, self.theme_tokens(), actions)
+        else:
+            self.inspector.show_message("The inspector works with native widgets. For HTML widgets, use "
+                                        "the Code tab.")
+        self.inspector_revealer.set_reveal_child(True)
         self.chip_label.set_text(f"Selected: {what}")
         self.chip_label.set_tooltip_text(self.selection.get("selector") or what)
         self.chip.show()
@@ -753,6 +846,7 @@ class MakerWindow(Gtk.ApplicationWindow):
     def _clear_selection(self):
         self.selection = None
         self.chip.hide()
+        self.inspector_revealer.set_reveal_child(False)
         if self.preview is not None:
             self.preview.select(None)
 
@@ -798,6 +892,79 @@ class MakerWindow(Gtk.ApplicationWindow):
             return {"kind": "native", "path": codeedit.path_label(path), "node": sel["node"]}
         return {"kind": "html", "selector": sel.get("selector", ""), "html": sel.get("html", "")}
 
+    # --- theme ---------------------------------------------------------------------
+    def theme_tokens(self) -> dict:
+        return themes.current(self.app.cfg.get("theme"))
+
+    def open_theme(self):
+        from .theme_ui import ThemeDialog
+        dlg = ThemeDialog(self, self.app.cfg.get("theme"))
+        if dlg.run() == Gtk.ResponseType.OK:
+            self.apply_theme(dlg.settings)
+        dlg.destroy()
+
+    def apply_theme(self, settings: dict):
+        self.app.cfg["theme"] = settings
+        config.save(self.app.cfg)
+        store.notify_changed()  # the desktop daemon restyles every widget
+        tokens = self.theme_tokens()
+        if self.preview is not None:
+            self.preview.set_theme(tokens)
+        if self.gallery_window is not None:
+            self.gallery_window.set_theme(tokens)
+        self.status.set_text("Theme applied. Widgets that use theme colors follow it.")
+
+    # --- property inspector ------------------------------------------------------------
+    def _on_inspector_change(self, key, value):
+        # Sliders and pickers fire often: apply the last value after a short pause.
+        self._inspector_pending = (key, value)
+        if self._inspector_timer:
+            GLib.source_remove(self._inspector_timer)
+        self._inspector_timer = GLib.timeout_add(150, self._apply_inspector_edit)
+
+    def _apply_inspector_edit(self):
+        self._inspector_timer = 0
+        if not (self.selection and self.selection["kind"] == "native" and self.draft) or self.busy:
+            return False
+        if not self._can_drop_code_edits():
+            return False
+        key, value = self._inspector_pending
+        path = codeedit.node_path(self.draft["ui"], self.selection["node"])
+        if path is None:
+            return False
+        old = self.selection["node"].get(key)
+        was_set = key in self.selection["node"]
+        try:
+            spec = (codeedit.remove_property(self.draft, path, key) if value is REMOVE
+                    else codeedit.set_property(self.draft, path, key, value))
+        except codeedit.CodeError as e:
+            self.inspector.set_error(str(e))
+            return False
+        if self._edit_run != (path, key):  # one Undo step per property, not per slider tick
+            self._remember(self.draft)
+            self._edit_run = (path, key)
+            if not self.prompts or self.prompts[-1] != "Edited in the inspector":
+                self.prompts.append("Edited in the inspector")
+        self.draft = spec
+        node = codeedit.node_at(spec["ui"], path)
+        self.selection["node"] = node
+        if self.preview is None or self.preview_engine != "native":
+            self._show_preview()
+        else:
+            self.preview.update_ui(spec["ui"])
+            self.preview.select(node)
+        new = node.get(key)
+        kind_changed = (isinstance(old, list) != isinstance(new, list)
+                        or (isinstance(old, str) and "{" in old) != (isinstance(new, str) and "{" in new))
+        if value is REMOVE or not was_set or kind_changed:  # a different editor is needed
+            self.inspector.show_node(node, self.theme_tokens(), self.inspector.actions)
+        else:
+            self.inspector.update_node(node)
+        self.code_dirty = False
+        self._fill_code()
+        self._sync_ui()
+        return False
+
     # --- gallery, import and export ---------------------------------------------
     def open_gallery(self):
         from .gallery_ui import GalleryWindow  # builds a preview of every item, so only on demand
@@ -815,9 +982,11 @@ class MakerWindow(Gtk.ApplicationWindow):
         self._clear_selection()
         spec["position"] = store.free_anchor(spec["position"])
         self.draft, self.editing_id, self.prompts, self.auto_place = spec, None, [history], False
+        self.undo_stack, self.redo_stack, self.approved_hashes = [], [], set()
         self.prompt.get_buffer().set_text("")
         self.draft_approved = not spec["commands"] or approval_dialog(self, spec["name"], spec["commands"],
                                                                       note=note)
+        self._note_approved()
         self._show_preview()
         self.status.set_text(f"Opened “{spec['name']}” from {origin}. Place it on the desktop, or describe a "
                              "change and press Refine.")
@@ -879,20 +1048,43 @@ class MakerWindow(Gtk.ApplicationWindow):
             more = Gtk.MenuButton(tooltip_text="More",
                                   image=Gtk.Image.new_from_icon_name("view-more-symbolic", Gtk.IconSize.BUTTON))
             menu = Gtk.Menu()
+            for text, key in (("Lock position", "locked"), ("Click-through", "click_through")):
+                item = Gtk.CheckMenuItem(label=text, active=bool(m.get(key)))
+                item.connect("toggled", lambda i, k=key, wid=m["id"]: self.set_flag(wid, k, i.get_active()))
+                menu.append(item)
+            menu.append(Gtk.SeparatorMenuItem())
             for text, action in (("Export…", self.export), ("Delete", self.delete_widget)):
                 item = Gtk.MenuItem(label=text)
                 item.connect("activate", lambda _i, a=action, wid=m["id"]: a(wid))
                 menu.append(item)
             menu.show_all()
+            flags = [label_ for key, label_ in (("locked", "locked"), ("click_through", "click-through"))
+                     if m.get(key)]
+            if flags:
+                name.set_tooltip_text(f"{name.get_tooltip_text()}\n({', '.join(flags)})")
             more.set_popup(menu)
             for b in (edit, more):
                 b.get_style_context().add_class("flat")
             row.pack_start(name, True, True, 0)
+            for key, icon, tip in (("locked", "changes-prevent-symbolic", "Locked in place"),
+                                   ("click_through", "input-mouse-symbolic", "Click-through")):
+                if m.get(key):
+                    badge = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
+                    badge.set_tooltip_text(tip)
+                    badge.get_style_context().add_class("dim")
+                    row.pack_start(badge, False, False, 0)
             row.pack_start(switch, False, False, 0)
             row.pack_start(edit, False, False, 0)
             row.pack_start(more, False, False, 0)
             self.listbox.add(row)
         self.listbox.show_all()
+
+    def set_flag(self, widget_id: str, key: str, value: bool):
+        """Lock position or click-through: the daemon applies it without reloading the widget."""
+        manifest = store.load(widget_id)
+        if bool(manifest.get(key)) != value:
+            manifest[key] = value
+            store.save_manifest(manifest)
 
     def set_enabled(self, widget_id: str, enabled: bool):
         manifest = store.load(widget_id)
@@ -920,6 +1112,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         if dlg.run() == Gtk.ResponseType.OK:
             dlg.apply(self.app.cfg)
             config.save(self.app.cfg)
+            store.notify_changed()  # the desktop daemon rereads the settings (e.g. "lock all")
             self.backend_combo.set_active_id(self.app.cfg["backend"])
         dlg.destroy()
 

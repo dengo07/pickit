@@ -8,12 +8,13 @@ watches the widget store and reconciles its windows whenever anything changes.
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, GLib, Gtk  # noqa: E402
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import autostart, config, runtime, store  # noqa: E402
+from . import autostart, config, runtime, store, theme  # noqa: E402
 from .dialogs import approval_dialog, confirm, export_dialog, install_css  # noqa: E402
 from .events import SystemEvents  # noqa: E402
-from .widget_window import WidgetWindow  # noqa: E402
+from .widget_window import WidgetWindow, dialog_parent, layer_shell  # noqa: E402
 
 # Must be prefixed by the app ID: Flatpak only lets an app own names under its ID.
 DAEMON_ID = runtime.APP_ID + ".Desktop"
@@ -58,13 +59,46 @@ class DesktopDaemon(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
         install_css()
+        print(f"pickit: widgets are {'Wayland layer-shell surfaces' if layer_shell() else 'X11 windows'}",
+              flush=True)  # in daemon.log, for bug reports
         self.hold()  # stay alive even with zero widgets, so new ones appear immediately
         cfg = config.load()
         if cfg.get("autostart", True):
             autostart.set_enabled(True)  # also refreshes the path if the project moved
         self._monitor = store.watch(self.reconcile)
         self._events = SystemEvents(self.refresh_all)
+        self._theme = None
+        # Themes that follow the desktop's light/dark mode or accent color restyle live.
+        theme.watch_system(lambda: GLib.idle_add(lambda: self.reconcile() and False))
+        display = Gdk.Display.get_default()
+        self._monitor_timer = 0
+        for signal in ("monitor-added", "monitor-removed"):
+            display.connect(signal, lambda *_: self._monitors_changed())
         self.reconcile()
+
+    def _on_window_destroyed(self, win, wid):
+        if self.windows.get(wid) is not win:
+            return  # reconcile() closed it on purpose
+        # Closed from outside: on Wayland the compositor closes layer surfaces whose output
+        # was unplugged. Bring the widget back on a monitor that's still there.
+        self.windows.pop(wid)
+        GLib.timeout_add(500, lambda: self.reconcile() and False)
+
+    def _monitors_changed(self):
+        """A monitor was plugged in or removed: place every widget again, once things settle."""
+        if self._monitor_timer:
+            GLib.source_remove(self._monitor_timer)
+
+        def replace():
+            self._monitor_timer = 0
+            for wid, win in list(self.windows.items()):
+                try:
+                    manifest = store.load(wid)
+                except FileNotFoundError:
+                    continue
+                win.apply_manifest(manifest, reposition="x" not in manifest)
+            return False
+        self._monitor_timer = GLib.timeout_add(800, replace)
 
     def do_command_line(self, cmdline):
         args = cmdline.get_arguments()[1:]
@@ -84,6 +118,11 @@ class DesktopDaemon(Gtk.Application):
 
     def reconcile(self):
         cfg = config.load()
+        tokens = theme.current(cfg.get("theme"))
+        if tokens != self._theme:
+            self._theme = tokens
+            for win in self.windows.values():
+                win.set_theme(tokens)
         wanted = {m["id"]: m for m in store.list_widgets() if m.get("enabled", True)}
         for wid in list(self.windows):
             if wid not in wanted:
@@ -91,14 +130,16 @@ class DesktopDaemon(Gtk.Application):
         for wid, manifest in wanted.items():
             win = self.windows.get(wid)
             if win is None:
-                win = WidgetWindow(manifest, cfg, self._callbacks())
-                win.connect("destroy", lambda w, i=wid: self.windows.pop(i, None)
-                            if self.windows.get(i) is w else None)
+                win = WidgetWindow(manifest, cfg, self._callbacks(), theme=tokens)
+                win.connect("destroy", self._on_window_destroyed, wid)
                 self.windows[wid] = win
                 self.add_window(win)
                 win.show_all()
-            elif win.signature != store.signature(manifest):
-                win.apply_manifest(manifest, reposition="x" not in manifest)
+            else:
+                win.lock_all = cfg.get("lock_widgets", False)
+                win.update_flags(manifest)
+                if win.signature != store.signature(manifest):
+                    win.apply_manifest(manifest, reposition="x" not in manifest)
 
     # --- widget context-menu actions ------------------------------------------
     def _callbacks(self):
@@ -115,7 +156,8 @@ class DesktopDaemon(Gtk.Application):
 
     def _review_commands(self, wid):
         manifest = store.load(wid)
-        if approval_dialog(self.windows.get(wid), manifest["name"], manifest.get("commands", {})):
+        parent = dialog_parent(self.windows.get(wid))
+        if approval_dialog(parent, manifest["name"], manifest.get("commands", {})):
             manifest["approved_hash"] = store.commands_hash(manifest["commands"])
         else:
             manifest.pop("approved_hash", None)
@@ -123,5 +165,5 @@ class DesktopDaemon(Gtk.Application):
 
     def _delete(self, wid):
         manifest = store.load(wid)
-        if confirm(self.windows.get(wid), f"Delete “{manifest['name']}”?"):
+        if confirm(dialog_parent(self.windows.get(wid)), f"Delete “{manifest['name']}”?"):
             store.delete(wid)

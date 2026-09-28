@@ -19,9 +19,6 @@ from pathlib import Path
 
 
 def main() -> int:
-    # Widgets rely on X11 window hints (keep-below, sticky, dock layer). On Wayland
-    # desktops this runs the app through XWayland, where those hints still apply.
-    os.environ.setdefault("GDK_BACKEND", "x11")
     # WebKit's GPU buffer sharing (DMABuf/GBM) fails on NVIDIA's driver, especially in
     # sandboxes, leaving widgets invisible. Hand frames over through shared memory instead.
     # (Not WEBKIT_DISABLE_DMABUF_RENDERER: with WebKit 2.54+, as in the Flatpak runtime,
@@ -49,9 +46,15 @@ def main() -> int:
     if args and args[0] == "export":
         return _export(args[1:])
     # Everything below opens windows. (The commands above work without GTK installed.)
-    from gi.repository import GLib
-    GLib.set_prgname("pickit")  # WM_CLASS, so the launcher/taskbar icon matches
     if args and args[0] in ("run", "stop"):
+        from gi.repository import GLib
+        # The X11 WM_CLASS of the widget windows (set before GTK starts). Not "pickit": that class
+        # belongs to the launcher (StartupWMClass), and docks such as Plank would show widgets
+        # as a running app.
+        GLib.set_prgname("pickit-widget")
+        if args[0] == "run":
+            from . import session
+            session.setup_widget_display()  # Wayland layer-shell if the compositor has it, else X11
         from .daemon import DesktopDaemon, acquire_instance_lock, is_running
         if args[0] == "stop" and not is_running():
             print("The desktop daemon is not running.")
@@ -66,6 +69,10 @@ def main() -> int:
     if args and args[0] == "import" and len(args) < 2:
         print("Usage: pickit import FILE", file=sys.stderr)
         return 2
+
+    # The Pickit window is an ordinary app window: native Wayland on Wayland, X11 on X11.
+    from gi.repository import GLib
+    GLib.set_prgname("pickit")  # WM_CLASS on X11, so the launcher/taskbar icon matches
 
     from .app import PickitApp
     return PickitApp().run(sys.argv)

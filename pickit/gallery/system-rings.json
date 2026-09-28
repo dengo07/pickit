@@ -27,22 +27,22 @@
         "color": [
          {
           "when": "{stats.cpu} >= 85",
-          "value": "#f87171"
+          "value": "{theme.bad}"
          },
          {
           "when": "{stats.cpu} >= 60",
-          "value": "#f0a64a"
+          "value": "{theme.warn}"
          },
-         "#60a5fa"
+         "{theme.accent}"
         ],
-        "track": "rgba(255,255,255,0.08)",
+        "track": "{theme.border}",
         "children": [
          {
           "type": "label",
           "text": "{stats.cpu|round|default:--}%",
           "size": 18,
           "weight": "semibold",
-          "color": "#f4f1ea",
+          "color": "{theme.text}",
           "align": "center"
          }
         ]
@@ -53,7 +53,7 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.62)",
+        "color": "{theme.muted}",
         "align": "center"
        }
       ],
@@ -70,22 +70,22 @@
         "color": [
          {
           "when": "{stats.mem|word:0} >= 85",
-          "value": "#f87171"
+          "value": "{theme.bad}"
          },
          {
           "when": "{stats.mem|word:0} >= 60",
-          "value": "#f0a64a"
+          "value": "{theme.warn}"
          },
-         "#60a5fa"
+         "{theme.accent}"
         ],
-        "track": "rgba(255,255,255,0.08)",
+        "track": "{theme.border}",
         "children": [
          {
           "type": "label",
           "text": "{stats.mem|word:0|round|default:--}%",
           "size": 18,
           "weight": "semibold",
-          "color": "#f4f1ea",
+          "color": "{theme.text}",
           "align": "center"
          }
         ]
@@ -96,7 +96,7 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.62)",
+        "color": "{theme.muted}",
         "align": "center"
        }
       ],
@@ -113,22 +113,22 @@
         "color": [
          {
           "when": "{stats.disk|word:0} >= 85",
-          "value": "#f87171"
+          "value": "{theme.bad}"
          },
          {
           "when": "{stats.disk|word:0} >= 60",
-          "value": "#f0a64a"
+          "value": "{theme.warn}"
          },
-         "#60a5fa"
+         "{theme.accent}"
         ],
-        "track": "rgba(255,255,255,0.08)",
+        "track": "{theme.border}",
         "children": [
          {
           "type": "label",
           "text": "{stats.disk|word:0|round|default:--}%",
           "size": 18,
           "weight": "semibold",
-          "color": "#f4f1ea",
+          "color": "{theme.text}",
           "align": "center"
          }
         ]
@@ -139,7 +139,7 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.62)",
+        "color": "{theme.muted}",
         "align": "center"
        }
       ],

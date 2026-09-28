@@ -2,10 +2,12 @@
 and map component paths to their place in the JSON text. No GTK, so it's unit-testable.
 """
 
+import copy
 import json
 import re
 
 from . import generator
+from .native import spec as ui_spec
 
 SETTINGS_KEYS = ("name", "width", "height", "position", "commands")
 
@@ -101,6 +103,40 @@ def error_path(message: str) -> tuple | None:
         return None
     parts = re.findall(r"\.[A-Za-z_]+|\[\d+\]", m.group(1))
     return tuple(int(p[1:-1]) if p.startswith("[") else p[1:] for p in parts)
+
+
+# --- the property inspector ---------------------------------------------------------------------
+def editable_properties(node: dict) -> list[dict]:
+    """A component's properties for the inspector: its own first, then the common ones.
+    Each is {"key", "kind", "choices" (for enums), "value" (None if unset), "set"}."""
+    own = ui_spec.COMPONENTS.get(node.get("type"), {})
+    out = []
+    for group in (own, ui_spec.COMMON):
+        for key, rule in group.items():
+            if rule[0] == ui_spec.CHILDREN or any(p["key"] == key for p in out):
+                continue
+            choices = sorted(rule[1]) if rule[0] == ui_spec.ENUM else None
+            out.append({"key": key, "kind": rule[0], "choices": choices,
+                        "value": node.get(key), "set": key in node})
+    return out
+
+
+def _edited(spec: dict, path: tuple, change) -> dict:
+    new = copy.deepcopy(spec)
+    change(node_at(new["ui"], path))
+    try:
+        return generator.validate(new, new["engine"])
+    except generator.SpecError as e:
+        raise CodeError(str(e).removeprefix("Native `ui` is invalid: "), "layout") from None
+
+
+def set_property(spec: dict, path: tuple, key: str, value) -> dict:
+    """A copy of `spec` with the component at `path` changed, validated. Raises CodeError."""
+    return _edited(spec, path, lambda node: node.__setitem__(key, value))
+
+
+def remove_property(spec: dict, path: tuple, key: str) -> dict:
+    return _edited(spec, path, lambda node: node.pop(key, None))
 
 
 def describe(node: dict) -> str:

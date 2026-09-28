@@ -51,7 +51,7 @@
         ],
         "size": 10,
         "letter_spacing": 1.2,
-        "color": "rgba(255,255,255,0.6)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
@@ -64,14 +64,14 @@
         ],
         "size": 15,
         "weight": "semibold",
-        "color": "#ffffff",
+        "color": "{theme.text}",
         "ellipsize": true
        },
        {
         "type": "label",
         "text": "{m.artist}",
         "size": 12,
-        "color": "rgba(255,255,255,0.7)",
+        "color": "{theme.muted}",
         "ellipsize": true
        },
        {
@@ -83,7 +83,7 @@
           "type": "label",
           "text": "{m.position|mmss}",
           "size": 10,
-          "color": "rgba(255,255,255,0.6)"
+          "color": "{theme.muted}"
          },
          {
           "type": "progress",
@@ -96,7 +96,7 @@
           "type": "button",
           "icon": "media-skip-backward-symbolic",
           "action": "previous",
-          "color": "#ffffff"
+          "color": "{theme.text}"
          },
          {
           "type": "button",
@@ -108,14 +108,14 @@
            "media-playback-start-symbolic"
           ],
           "action": "playpause",
-          "color": "#111111",
-          "background": "#ffffff"
+          "color": "{theme.card}",
+          "background": "{theme.text}"
          },
          {
           "type": "button",
           "icon": "media-skip-forward-symbolic",
           "action": "next",
-          "color": "#ffffff"
+          "color": "{theme.text}"
          }
         ]
        }

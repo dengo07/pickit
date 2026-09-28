@@ -21,14 +21,14 @@
       "text": "{s.os|default:Linux}",
       "size": 15,
       "weight": "semibold",
-      "color": "#f4f1ea",
+      "color": "{theme.text}",
       "ellipsize": true
      },
      {
       "type": "label",
       "text": "{s.user}@{s.host}",
       "size": 11,
-      "color": "#f0a64a"
+      "color": "{theme.accent}"
      }
     ],
     "spacing": 2
@@ -43,7 +43,7 @@
         "type": "label",
         "text": "Uptime",
         "size": 12,
-        "color": "rgba(244,241,234,0.62)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -52,7 +52,7 @@
         "type": "label",
         "text": "{s.up|duration}",
         "size": 12,
-        "color": "#f4f1ea",
+        "color": "{theme.text}",
         "ellipsize": true
        }
       ]
@@ -64,7 +64,7 @@
         "type": "label",
         "text": "Kernel",
         "size": 12,
-        "color": "rgba(244,241,234,0.62)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -73,7 +73,7 @@
         "type": "label",
         "text": "{s.kernel}",
         "size": 12,
-        "color": "#f4f1ea",
+        "color": "{theme.text}",
         "ellipsize": true
        }
       ]
@@ -85,7 +85,7 @@
         "type": "label",
         "text": "Load",
         "size": 12,
-        "color": "rgba(244,241,234,0.62)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -94,7 +94,7 @@
         "type": "label",
         "text": "{s.load}",
         "size": 12,
-        "color": "#f4f1ea",
+        "color": "{theme.text}",
         "ellipsize": true
        }
       ]
@@ -106,7 +106,7 @@
         "type": "label",
         "text": "Processes",
         "size": 12,
-        "color": "rgba(244,241,234,0.62)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -115,7 +115,7 @@
         "type": "label",
         "text": "{s.procs}",
         "size": 12,
-        "color": "#f4f1ea",
+        "color": "{theme.text}",
         "ellipsize": true
        }
       ]

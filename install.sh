@@ -11,6 +11,10 @@ python3 -c "import gi; gi.require_version('Gtk','3.0'); gi.require_version('WebK
   echo "  sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1"
   exit 1
 }
+python3 -c "import gi; gi.require_version('GtkLayerShell','0.1')" 2>/dev/null || {
+  echo "Optional, for native Wayland widgets on KDE, Hyprland, Sway and similar:"
+  echo "  sudo apt install gir1.2-gtklayershell-0.1"
+}
 install -Dm644 "$DIR/pickit/data/$APP_ID.svg" "$SHARE/icons/hicolor/scalable/apps/$APP_ID.svg"
 sed "s|^Exec=pickit|Exec=env PYTHONPATH=$DIR python3 -m pickit|" "$DIR/pickit/data/$APP_ID.desktop" \
   > "$SHARE/applications/$APP_ID.desktop"

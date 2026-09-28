@@ -10,6 +10,7 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("WebKit2", "4.1")
 from gi.repository import Gdk, GLib, WebKit2  # noqa: E402
 
+from . import theme as themes  # noqa: E402
 from .bridge import BRIDGE_JS, CommandRunner  # noqa: E402
 
 WATCHDOG_SECONDS = 30
@@ -95,6 +96,9 @@ class WidgetView(WebKit2.WebView):
             WebKit2.UserScriptInjectionTime.START, None, None))
         manager.register_script_message_handler("widget")
         manager.connect("script-message-received::widget", self._on_message)
+        self._manager = manager
+        self.theme = themes.default_tokens()
+        self._apply_theme_css()
         kwargs = {"user_content_manager": manager}
         anchor = next(iter(_shared_views), None) if shared and SHARE_WEB_PROCESS else None
         if anchor is not None:
@@ -141,10 +145,30 @@ class WidgetView(WebKit2.WebView):
         if self.runner:
             self.runner.refresh(max_interval)
 
+    def set_theme(self, tokens: dict):
+        """Restyle: the CSS variables change live, and `pickit-theme` fires for scripts."""
+        if tokens == self.theme:
+            return
+        self.theme = tokens
+        self._apply_theme_css()
+        if self._loaded:
+            self._send_theme()
+
+    def _apply_theme_css(self):
+        # A user style sheet applies before the page's own CSS runs, so no flash of defaults.
+        self._manager.remove_all_style_sheets()
+        self._manager.add_style_sheet(WebKit2.UserStyleSheet(
+            themes.css_variables(self.theme), WebKit2.UserContentInjectedFrames.TOP_FRAME,
+            WebKit2.UserStyleLevel.USER, None, None))
+
+    def _send_theme(self):
+        self._js(f"window.widget && window.widget._theme({json.dumps(self.theme)})")
+
     def _on_load_changed(self, _view, event):
         if event != WebKit2.LoadEvent.FINISHED:
             return
         self._loaded = True
+        self._send_theme()
         if self._on_select:
             self._js(f"{SELECT_JS}.on()")
         if self._run_commands:

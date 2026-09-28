@@ -135,3 +135,40 @@ def test_no_selection_no_section():
     backend = Recorder(NATIVE)
     generator.generate(backend, "bigger", NATIVE)
     assert "SELECTED PART" not in backend.messages[0]["content"]
+
+
+def test_editable_properties():
+    ring = UI["children"][1]["children"][0]
+    props = {p["key"]: p for p in codeedit.editable_properties(ring)}
+    assert props["value"]["set"] and props["value"]["value"] == "{c.cpu}"
+    assert not props["thickness"]["set"] and props["thickness"]["value"] is None
+    assert "children" not in props and "halign" in props      # common properties, no children
+    assert props["halign"]["choices"] == ["center", "end", "fill", "start"]
+    keys = list(props)
+    assert keys.index("value") < keys.index("margin")           # its own properties first
+
+
+def test_set_and_remove_property():
+    path = ("children", 1, "children", 0)
+    changed = codeedit.set_property(NATIVE, path, "thickness", 12)
+    assert codeedit.node_at(changed["ui"], path)["thickness"] == 12
+    assert "thickness" not in codeedit.node_at(NATIVE["ui"], path)     # the original is untouched
+    back = codeedit.remove_property(changed, path, "thickness")
+    assert "thickness" not in codeedit.node_at(back["ui"], path)
+    themed = codeedit.set_property(NATIVE, path, "color", "{theme.accent}")
+    assert codeedit.node_at(themed["ui"], path)["color"] == "{theme.accent}"
+
+
+@pytest.mark.parametrize("key, value, error", [
+    ("size", "huge", "whole number"),
+    ("color", "red; background: url(x)", "not a color"),
+    ("halign", "sideways", "must be one of"),
+])
+def test_invalid_edits_are_rejected(key, value, error):
+    with pytest.raises(CodeError, match=error):
+        codeedit.set_property(NATIVE, ("children", 1, "children", 0), key, value)
+
+
+def test_required_properties_cannot_be_removed():
+    with pytest.raises(CodeError, match="required"):
+        codeedit.remove_property(NATIVE, ("children", 1, "children", 0), "value")

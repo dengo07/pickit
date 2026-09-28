@@ -3,7 +3,29 @@
 All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+
+
+## [1.5.0] - 2026-09-28
+
+### Added
+- **Native Wayland widgets.** On compositors with the layer-shell protocol (KDE Plasma, Hyprland, Sway, COSMIC, niri, labwc and other wlroots compositors), widgets are now real desktop-layer surfaces: above the wallpaper, below every window, on every workspace, never in a taskbar. Corners and edges are anchors, so widgets stay in place when the resolution changes, and dragging works without X11. On GNOME and Cinnamon, which have no layer-shell, widgets keep using X11 windows through XWayland, which works as before (reported working on Cinnamon's Wayland session). `daemon.log` records which one is used, and `PICKIT_WIDGET_BACKEND=x11|layer-shell` forces a choice.
+- The Flatpak and the AppImage include gtk-layer-shell, and the Flatpak can use the Wayland socket.
+- CI runs a Wayland smoke test in a headless Sway: widgets must be bottom-layer surfaces at the right anchors, dragging must move them (with a compositor that applies each move late), and their menu must pop up.
+- A weekly check opens an issue when Flathub marks Pickit's GNOME runtime end-of-life, before users see end-of-life notices.
+- **Lock position and click-through.** Right-click a widget to lock it in place (or lock them all in Settings), or to let clicks pass through it to the desktop underneath. Pickit's sidebar shows both states and can switch them off. They apply instantly, without reloading the widget.
+- **Multiple monitors.** With two or more monitors, **Move to monitor** puts a widget on another screen, and dragging a widget to another screen remembers it (X11). If a widget's monitor is unplugged, it comes back on one that's still connected, and returns when you plug it in again.
+- **Undo and redo** in the editor (buttons, <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) for AI refines and code edits. Pickit keeps the last 10 saved versions of each widget, so Undo works after reopening it too. Going back to commands you already approved doesn't ask again.
+- **Widget theme.** One accent color, text colors, card look, corner radius and font for all your widgets. Press **Theme** in the header to pick a preset (Charcoal, Graphite, Forest, Paper, each with a dark and a light variant), change any color, or follow the desktop's light/dark mode and accent color. Every widget on the desktop restyles at once, and a live preview shows the result before you apply it. Native widgets use tokens such as `{theme.accent}`; HTML widgets get CSS variables such as `var(--pickit-accent)` and a `pickit-theme` event. The AI and the gallery now use the theme, so new widgets match each other. Widgets made before 1.5.0 keep their own colors, so a light theme can't make their text unreadable.
+- **Property inspector.** Select a part of a native widget and the inspector next to the preview shows its properties: color pickers (or a theme color), number boxes, switches and menus, with a live preview. **Add property** sets one that isn't set yet, × goes back to the default. Invalid values are refused with the reason, and each property you change is one Undo step. For HTML widgets, use the Code tab.
+- **Smooth values.** Rings and progress bars ease to each new value instead of jumping. The animation runs only while a value changes and follows the desktop's "reduce animations" setting.
+
+### Changed
+- The Charcoal theme (the default) uses its amber accent for the gallery's meters and rings, which were blue, so all gallery widgets match.
+- The Pickit window runs natively on Wayland instead of through XWayland.
+- The release workflow pins the Flatpak builder action to a commit, as the action now asks, instead of following its main branch.
+
+### Fixed
+- Removed the one deprecated GTK call (`Gtk.Window.set_wmclass`): widgets get their `pickit-widget` class from the widget daemon's program name instead, so docks such as Plank still ignore them. Pickit now runs without any deprecation warnings.
 
 ## [1.4.0] - 2026-09-27
 
@@ -101,7 +123,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/dengo07/pickit/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/dengo07/pickit/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dengo07/pickit/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dengo07/pickit/compare/v1.1.1...v1.2.0

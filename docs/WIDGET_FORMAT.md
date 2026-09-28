@@ -6,6 +6,7 @@ Each widget is a folder in `~/.local/share/pickit/widgets/<id>/`:
 widget.json   manifest: engine, size, position, commands, approval, state
 ui.json       native engine: the component tree
 index.html    html engine: the widget page
+versions/     the last 10 earlier versions, for Undo in the editor
 ```
 
 A widget has exactly one of `ui.json` or `index.html`, depending on its engine. The easiest way to edit one is the **Code** tab in the Pickit window, which checks your changes before applying them. You can also edit the files directly; then right-click the widget and choose **Reload**.
@@ -33,6 +34,9 @@ In **Auto** mode, the AI uses native whenever the design fits and HTML otherwise
   "position": "bottom-right",        // initial anchor (see below)
   "x": 1596, "y": 936,               // set once the widget has been moved
   "enabled": true,                   // shown on the desktop
+  "monitor": 1,                      // optional: which monitor (0 = first); unset = the main one
+  "locked": false,                   // optional: can't be dragged
+  "click_through": false,            // optional: clicks go to whatever is underneath
   "commands": {
     "cpu":  { "cmd": "awk '{print $1}' /proc/loadavg", "interval": 2 },
     "play": { "cmd": "busctl --user call …",            "interval": 0 }
@@ -90,6 +94,19 @@ A command's output becomes data under the command's key. JSON is parsed as JSON,
 - Bindings are evaluated by a small built-in interpreter, never by `eval`, so a widget file can't run code. Only the approved commands ever run.
 - Only the parts of a widget that depend on changed data are updated, so an idle native widget costs no CPU.
 
+### The theme
+
+`theme` is also always available: the colors of the user's widget theme (**Theme** in Pickit's header). Use them instead of fixed colors so the widget restyles with the theme and stays readable in light and dark mode:
+
+| Token | Use it for |
+|---|---|
+| `{theme.accent}` | the highlight: ring and bar fills, today's date, a play button |
+| `{theme.text}` / `{theme.muted}` | main and secondary text |
+| `{theme.card}` / `{theme.border}` | panel backgrounds and borders; `{theme.border}` also suits ring and bar tracks |
+| `{theme.good}` / `{theme.warn}` / `{theme.bad}` | levels, e.g. in a choice: `[{"when": "{cpu} > 90", "value": "{theme.bad}"}, "{theme.accent}"]` |
+
+A widget that uses any `{theme.…}` token is *themed*: its `card`s also take the theme's background, border and corner radius, and its text the theme's text color and font. Widgets without tokens (everything made before Pickit 1.5.0) keep the fixed dark card look, so a light theme never makes their white text unreadable. Fixed colors still work in themed widgets when a design needs them.
+
 Complete examples, which the AI also learns from: [`pickit/prompts/native_examples/`](../pickit/prompts/native_examples/).
 
 ## HTML engine: `index.html` and the `window.widget` JS API
@@ -113,6 +130,12 @@ header.addEventListener("mousedown", (e) => widget.drag(e));
 ```
 
 If a result already exists when you subscribe, the callback fires immediately.
+
+The theme is available as CSS variables: `--pickit-accent`, `--pickit-text`, `--pickit-muted`, `--pickit-card`, `--pickit-border`, `--pickit-good`, `--pickit-warn`, `--pickit-bad`, `--pickit-radius` (with `px`) and `--pickit-font` (only when the user chose a font). Give a fallback so the page also works outside Pickit: `color: var(--pickit-text, #f4f1ea)`. The variables change live when the user switches themes; for anything CSS can't do, read `widget.theme` (the same values, plus `mode`: `"dark"` or `"light"`) and listen for the change:
+
+```js
+window.addEventListener("pickit-theme", () => chart.setColor(widget.theme.accent));
+```
 
 Rendering rules:
 - The window is exactly `width` × `height` and transparent. Use `html, body { margin: 0; background: transparent; overflow: hidden; }` and draw your own panel if you want one.

@@ -4,7 +4,10 @@ runtime-version: '51'
 sdk: org.gnome.Sdk
 command: pickit
 finish-args:
-  # X11 only (XWayland on Wayland desktops): widgets need keep-below / sticky / dock hints.
+  # Wayland: the Pickit window, and widgets as layer-shell surfaces where the compositor has it.
+  - --socket=wayland
+  # X11 too, even on Wayland: widgets fall back to X11 dock / keep-below windows (through
+  # XWayland) on compositors without layer-shell, such as GNOME and Cinnamon.
   - --socket=x11
   - --share=ipc
   - --device=dri
@@ -24,6 +27,24 @@ finish-args:
   - --filesystem=xdg-config/pickit:create
 modules:
   - python-deps.json
+
+  # Wayland layer-shell for GTK 3: widgets in the desktop layer on KDE, Hyprland, Sway, COSMIC...
+  - name: gtk-layer-shell
+    buildsystem: meson
+    config-opts:
+      - -Dintrospection=true
+      - -Dvapi=false
+      - -Dexamples=false
+      - -Ddocs=false
+      - -Dtests=false
+    sources:
+      - type: archive
+        url: https://github.com/wmww/gtk-layer-shell/archive/refs/tags/v0.10.1.tar.gz
+        sha256: 88c3a3e0a5300532f3d368d5df64838a87f1fb85273f22d41df0a6b8d0ec59c6
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/gir-1.0
 
   - name: pickit
     buildsystem: simple

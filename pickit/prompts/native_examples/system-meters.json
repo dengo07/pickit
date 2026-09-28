@@ -27,7 +27,7 @@
         "size": 11,
         "weight": "semibold",
         "letter_spacing": 1.2,
-        "color": "rgba(255,255,255,0.7)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -36,14 +36,14 @@
         "type": "label",
         "text": "",
         "size": 11,
-        "color": "rgba(255,255,255,0.55)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "  {stats.cpu|round}%",
         "size": 12,
         "weight": "bold",
-        "color": "#ffffff"
+        "color": "{theme.text}"
        }
       ]
      },
@@ -54,13 +54,13 @@
       "color": [
        {
         "when": "{stats.cpu} >= 85",
-        "value": "#f87171"
+        "value": "{theme.bad}"
        },
        {
         "when": "{stats.cpu} >= 60",
-        "value": "#fbbf24"
+        "value": "{theme.warn}"
        },
-       "#60a5fa"
+       "{theme.accent}"
       ]
      }
     ]
@@ -78,7 +78,7 @@
         "size": 11,
         "weight": "semibold",
         "letter_spacing": 1.2,
-        "color": "rgba(255,255,255,0.7)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -87,14 +87,14 @@
         "type": "label",
         "text": "{stats.mem|word:1|div:1024|round:1} / {stats.mem|word:2|div:1024|round:1} GB",
         "size": 11,
-        "color": "rgba(255,255,255,0.55)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "  {stats.mem|word:0|round}%",
         "size": 12,
         "weight": "bold",
-        "color": "#ffffff"
+        "color": "{theme.text}"
        }
       ]
      },
@@ -105,13 +105,13 @@
       "color": [
        {
         "when": "{stats.mem|word:0} >= 85",
-        "value": "#f87171"
+        "value": "{theme.bad}"
        },
        {
         "when": "{stats.mem|word:0} >= 60",
-        "value": "#fbbf24"
+        "value": "{theme.warn}"
        },
-       "#60a5fa"
+       "{theme.accent}"
       ]
      }
     ]
@@ -129,7 +129,7 @@
         "size": 11,
         "weight": "semibold",
         "letter_spacing": 1.2,
-        "color": "rgba(255,255,255,0.7)"
+        "color": "{theme.muted}"
        },
        {
         "type": "spacer"
@@ -138,14 +138,14 @@
         "type": "label",
         "text": "{stats.disk|word:1} / {stats.disk|word:2} GB",
         "size": 11,
-        "color": "rgba(255,255,255,0.55)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "  {stats.disk|word:0|round}%",
         "size": 12,
         "weight": "bold",
-        "color": "#ffffff"
+        "color": "{theme.text}"
        }
       ]
      },
@@ -156,13 +156,13 @@
       "color": [
        {
         "when": "{stats.disk|word:0} >= 85",
-        "value": "#f87171"
+        "value": "{theme.bad}"
        },
        {
         "when": "{stats.disk|word:0} >= 60",
-        "value": "#fbbf24"
+        "value": "{theme.warn}"
        },
-       "#60a5fa"
+       "{theme.accent}"
       ]
      }
     ]

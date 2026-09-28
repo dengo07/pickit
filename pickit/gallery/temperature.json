@@ -22,15 +22,15 @@
     "color": [
      {
       "when": "{t.cpu} >= 85",
-      "value": "#f87171"
+      "value": "{theme.bad}"
      },
      {
       "when": "{t.cpu} >= 70",
-      "value": "#f0a64a"
+      "value": "{theme.warn}"
      },
      "#5eead4"
     ],
-    "track": "rgba(255,255,255,0.08)",
+    "track": "{theme.border}",
     "halign": "center",
     "children": [
      {
@@ -38,7 +38,7 @@
       "text": "{t.cpu|default:--}°",
       "size": 34,
       "weight": "light",
-      "color": "#f4f1ea",
+      "color": "{theme.text}",
       "align": "center"
      },
      {
@@ -47,7 +47,7 @@
       "size": 10,
       "weight": "semibold",
       "letter_spacing": 1.4,
-      "color": "rgba(244,241,234,0.62)",
+      "color": "{theme.muted}",
       "align": "center"
      }
     ]
@@ -61,11 +61,11 @@
     "color": [
      {
       "when": "{t.cpu} >= 85",
-      "value": "#f87171"
+      "value": "{theme.bad}"
      },
      {
       "when": "{t.cpu} >= 70",
-      "value": "#f0a64a"
+      "value": "{theme.warn}"
      },
      "#5eead4"
     ],

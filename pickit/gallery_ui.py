@@ -50,7 +50,7 @@ class GalleryWindow(Gtk.Window):
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, valign=Gtk.Align.START,
                            column_spacing=18, row_spacing=18, min_children_per_line=3, max_children_per_line=5,
                            border_width=20)
-        self.views = []
+        self.views, self.samples = [], []
         for item in gallery.items():
             child = Gtk.FlowBoxChild(can_focus=False)
             child.add(self._card(item))
@@ -73,6 +73,8 @@ class GalleryWindow(Gtk.Window):
         stage.set_size_request(width, PREVIEW_MAX[1] + 24)
         engine = engine_of(spec)
         view = make_view(engine, {}, desktop=False, background=PREVIEW_BG)
+        if hasattr(self.maker, "theme_tokens"):
+            view.set_theme(self.maker.theme_tokens())
         # Never runs the commands: the preview shows the item's sample output instead.
         view.load_widget(spec["ui"] if engine == "native" else spec["html"], spec["commands"], False)
         if engine == "native":
@@ -84,6 +86,7 @@ class GalleryWindow(Gtk.Window):
             view.set_valign(Gtk.Align.CENTER)
             stage.add(view)
         self.views.append(view)
+        self.samples.append((view, item.sample))
         card.pack_start(stage, False, False, 0)
 
         title = label(f"<b>{GLib.markup_escape_text(spec['name'])}</b>")
@@ -112,6 +115,12 @@ class GalleryWindow(Gtk.Window):
         buttons.pack_end(customize, False, False, 0)
         card.pack_start(buttons, False, False, 0)
         return card
+
+    def set_theme(self, tokens: dict):
+        for view, sample in self.samples:
+            view.set_theme(tokens)
+            if hasattr(view, "show_sample"):
+                view.show_sample(sample)
 
     def _on_add(self, button, item):
         if not self.maker.add_from_gallery(item, parent=self):

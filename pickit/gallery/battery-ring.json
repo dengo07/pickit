@@ -18,14 +18,14 @@
   "radius": 92,
   "padding": 8,
   "border_width": 0,
-  "background": "radial-gradient(circle at 50% 30%, rgba(44,48,62,0.93), rgba(14,16,22,0.93))",
+  "background": "{theme.card}",
   "children": [
    {
     "type": "ring",
     "size": 168,
     "thickness": 10,
     "value": "{battery.capacity}",
-    "track": "rgba(255,255,255,0.08)",
+    "track": "{theme.border}",
     "color": [
      {
       "when": "{battery.status} == Charging",
@@ -33,13 +33,13 @@
      },
      {
       "when": "{battery.capacity} <= 15",
-      "value": "#f87171"
+      "value": "{theme.bad}"
      },
      {
       "when": "{battery.capacity} <= 35",
-      "value": "#fbbf24"
+      "value": "{theme.warn}"
      },
-     "#4ade80"
+     "{theme.good}"
     ],
     "children": [
      {
@@ -47,14 +47,14 @@
       "text": "{battery.capacity|default:--}%",
       "size": 40,
       "weight": "semibold",
-      "color": "#eef1f6",
+      "color": "{theme.text}",
       "align": "center"
      },
      {
       "type": "label",
       "size": 11,
       "letter_spacing": 1.6,
-      "color": "rgba(238,241,246,0.72)",
+      "color": "{theme.muted}",
       "align": "center",
       "text": [
        {
@@ -75,7 +75,7 @@
      {
       "type": "label",
       "size": 11,
-      "color": "rgba(238,241,246,0.5)",
+      "color": "{theme.muted}",
       "align": "center",
       "text": [
        {

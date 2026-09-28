@@ -1,0 +1,43 @@
+name: Flatpak runtime check
+
+# Flathub stops supporting each GNOME runtime about a year after its release. Then installs
+# and updates print an end-of-life notice and the runtime gets no more security fixes.
+# This opens an issue when that happens, so the manifest gets moved to a newer runtime.
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Ask Flathub whether the runtime is end-of-life
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          manifest=packaging/flatpak/io.github.dengo07.Pickit.yml
+          version=$(sed -n "s/^runtime-version: *'\{0,1\}\([0-9.]*\)'\{0,1\}.*/\1/p" "$manifest")
+          eol=$(flatpak remote-info --user flathub "org.gnome.Platform/x86_64/$version" \
+                | sed -n 's/^ *End-of-life: //p')
+          if [ -z "$eol" ]; then
+            echo "The GNOME $version runtime is supported."
+            exit 0
+          fi
+          title="Flatpak runtime GNOME $version is end-of-life"
+          open=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq length)
+          if [ "$open" = "0" ]; then
+            body=$(printf '%s\n\n> %s\n\n%s\n' \
+              "Flathub marks \`org.gnome.Platform//$version\` as end-of-life:" "$eol" \
+              "Users now see an end-of-life notice when they install or update Pickit. Move \`runtime-version\` in \`$manifest\` to the newest GNOME runtime, check that \`make flatpak\` builds and the widgets work, and release.")
+            gh issue create --title "$title" --body "$body"
+          fi
+          echo "::warning::$title"

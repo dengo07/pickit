@@ -14,11 +14,12 @@
       now-playing panel. Pickit uses an AI model to build it and pins it to your desktop.
     </p>
     <ul>
-      <li>Widgets sit on the desktop below your windows, on every workspace</li>
+      <li>Widgets sit on the desktop below your windows, on every workspace, on X11 and Wayland</li>
       <li>They stay after you close the app and come back after a reboot</li>
       <li>Refine any widget by asking for changes, such as "make it bigger and blue"</li>
       <li>Click any part of a widget and tell the AI what to change about it, or edit the widget's code directly</li>
       <li>A gallery of ready-made widgets that work without any AI setup</li>
+      <li>One theme restyles every widget at once, and an inspector changes colors and sizes by hand</li>
       <li>Share widgets as files that others open with a double-click</li>
       <li>Live data comes from shell commands that you review and approve first</li>
       <li>Light on memory: most widgets are drawn natively with GTK</li>
@@ -59,6 +60,19 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.5.0" date="2026-09-27">
+      <description>
+        <p>Native Wayland widgets: on KDE Plasma, Hyprland, Sway, COSMIC and other compositors with layer-shell, widgets are now real desktop-layer surfaces. GNOME and Cinnamon keep using XWayland, as before.</p>
+        <ul>
+          <li>A theme for all widgets: presets, colors, corner radius and font, with light/dark mode that can follow the desktop</li>
+          <li>A property inspector to change the colors, sizes and text of a selected part without AI or code</li>
+          <li>Lock widgets in place, or let clicks pass through them</li>
+          <li>Move widgets between monitors</li>
+          <li>Undo and redo changes, with the last 10 versions of every widget kept</li>
+          <li>Rings and bars animate smoothly to new values</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.0" date="2026-09-27">
       <description>
         <p>Customize widgets in detail: select any part of a widget in the preview and tell the AI what to change about just that part, or open the new Code tab to view and edit the widget's layout, settings and commands directly, with checks before anything is applied.</p>

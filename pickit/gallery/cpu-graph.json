@@ -25,13 +25,13 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.62)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "{c.cores|default:–} cores · load {c.load|word:0|default:–}",
         "size": 10,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        }
       ],
       "spacing": 2,
@@ -45,7 +45,7 @@
       "text": "{c.cpu|round|default:--}%",
       "size": 30,
       "weight": "light",
-      "color": "#f4f1ea"
+      "color": "{theme.text}"
      }
     ]
    },

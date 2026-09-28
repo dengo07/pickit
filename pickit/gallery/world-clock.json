@@ -22,7 +22,7 @@
       "size": 10,
       "weight": "semibold",
       "letter_spacing": 1.4,
-      "color": "rgba(244,241,234,0.62)"
+      "color": "{theme.muted}"
      },
      {
       "type": "spacer"
@@ -31,7 +31,7 @@
       "type": "label",
       "text": "{now|time:%H:%M} here",
       "size": 10,
-      "color": "rgba(244,241,234,0.4)"
+      "color": "{theme.muted}"
      }
     ]
    },
@@ -47,20 +47,20 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "{t.ny|word:0|default:--:--}",
         "size": 26,
         "weight": "light",
-        "color": "#f4f1ea"
+        "color": "{theme.text}"
        },
        {
         "type": "label",
         "text": "{t.ny|word:1}",
         "size": 10,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        }
       ],
       "hexpand": true,
@@ -75,20 +75,20 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "{t.london|word:0|default:--:--}",
         "size": 26,
         "weight": "light",
-        "color": "#f4f1ea"
+        "color": "{theme.text}"
        },
        {
         "type": "label",
         "text": "{t.london|word:1}",
         "size": 10,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        }
       ],
       "hexpand": true,
@@ -103,20 +103,20 @@
         "size": 10,
         "weight": "semibold",
         "letter_spacing": 1.4,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        },
        {
         "type": "label",
         "text": "{t.tokyo|word:0|default:--:--}",
         "size": 26,
         "weight": "light",
-        "color": "#f4f1ea"
+        "color": "{theme.text}"
        },
        {
         "type": "label",
         "text": "{t.tokyo|word:1}",
         "size": 10,
-        "color": "rgba(244,241,234,0.4)"
+        "color": "{theme.muted}"
        }
       ],
       "hexpand": true,

@@ -53,6 +53,12 @@ Every component also accepts: `margin` (px or `[top, right, bottom, left]`), `wi
 
 Colors are `#rrggbb`, `#rrggbbaa`, `rgba(r,g,b,a)`, or (for `background`) `linear-gradient(...)` / `radial-gradient(...)`.
 
+## The widget theme
+
+The user picks one theme for all their widgets (light or dark, accent color, corner radius, font). **Use the theme tokens for colors unless the user asks for specific colors**, so the widget matches the others and follows theme changes:
+`{theme.accent}` (highlights, the main value), `{theme.text}`, `{theme.muted}` (secondary text), `{theme.card}` (panel background), `{theme.border}` (panel borders and the tracks of bars and rings), `{theme.good}`, `{theme.warn}`, `{theme.bad}` (status). A `card` without a `background` already uses the theme's card color, border and radius, and themed widgets get the theme's text color and font by default. Extra hues for charts with several series are fine as fixed colors. Status choices look like:
+`"color": [{"when": "{cpu} >= 85", "value": "{theme.bad}"}, {"when": "{cpu} >= 60", "value": "{theme.warn}"}, "{theme.accent}"]`
+
 ## Data binding
 
 Each command's output becomes data under its key. JSON output is parsed as JSON, `key=value` lines become an object, and anything else is plain text. Pick the output format that is easiest to bind. JSON is best for anything structured.
@@ -62,7 +68,7 @@ Each command's output becomes data under its key. JSON output is parsed as JSON,
 - **The current time** is always available as `now`: `"{now|time:%H:%M}"`, `"{now|time:%A, %d %B}"`. There is no need for a command; the widget updates every second on its own.
 - **Conditions** (for `visible`, and inside choices): `"{media.status} == Playing"`, `"{battery.capacity} < 20 and {battery.status} != Charging"`, with `== != < <= > >=`, `and`, `or`, `not`, parentheses, and quoted strings for values with spaces (`== 'Not charging'`). Numbers compare numerically.
 - **Choices**: any property can be a list, and the first entry whose `when` is true wins. A plain last entry is the default:
-  `"color": [{"when": "{cpu} >= 85", "value": "#f87171"}, {"when": "{cpu} >= 60", "value": "#fbbf24"}, "#60a5fa"]`
+  `"color": [{"when": "{cpu} >= 85", "value": "{theme.bad}"}, {"when": "{cpu} >= 60", "value": "{theme.warn}"}, "{theme.accent}"]`
 - Before data arrives, values are empty: use `default:` so the widget never shows blank or broken text.
 - Clicks: `button` runs its `action`, and Pickit refreshes the other data right after. Dragging anywhere else moves the widget, so no drag handle is needed.
 
@@ -76,6 +82,7 @@ These are complete, working widgets. Follow their structure and style.
 
 - The `html` is loaded into a borderless, transparent WebKit window of exactly `width` × `height` pixels that sits on the desktop below normal windows.
 - The page background MUST be transparent: `html, body { margin: 0; background: transparent; overflow: hidden; }`. Draw your own panels (for example a rounded card with an `rgba(...)` background) if the design calls for one. `backdrop-filter` can't blur what is behind the window, so don't rely on it. The content must fit the window exactly and never cause scrollbars.
+- Use the widget theme through CSS variables, with fallbacks: `var(--pickit-accent, #f0a64a)`, `var(--pickit-text, #f4f1ea)`, `var(--pickit-muted)`, `var(--pickit-card, rgba(18,18,24,0.78))`, `var(--pickit-border)`, `var(--pickit-good)`, `var(--pickit-warn)`, `var(--pickit-bad)`, `var(--pickit-radius, 16px)`, `var(--pickit-font)`. They update live when the theme changes; scripts can read `widget.theme` and listen for the `pickit-theme` event.
 - Everything must be inline (CSS in `<style>`, JS in `<script>`). You may load libraries or fonts only from https://cdn.jsdelivr.net, https://cdnjs.cloudflare.com or https://fonts.googleapis.com, and only when genuinely needed. Prefer plain JS, CSS, SVG and `<canvas>`.
 - Browser `fetch()` to third-party APIs is blocked by CORS. Get external or system data through `commands` instead (for example `curl -s ...`).
 - Time, date and timers can be done directly in JS without commands.
@@ -103,7 +110,7 @@ Widgets run all day on machines of every speed, so an idle widget must cost next
 
 # Design
 
-- Make it look polished and intentional: good typography, consistent spacing, subtle shadows, and readable contrast against both light and dark wallpapers unless the user specifies otherwise. A translucent dark card with light text is a safe default.
+- Make it look polished and intentional: good typography, consistent spacing, subtle shadows, and readable contrast against both light and dark wallpapers unless the user specifies otherwise. A `card` with the theme's colors is a safe default.
 - Handle the "no data yet" state gracefully, with placeholders instead of "undefined", NaN or blank text.
 - Respect every explicit request from the user about size, colors, position, content and behavior.
 

@@ -3,17 +3,43 @@
 The content is drawn by one of two engines: native GTK (`native.render.NativeView`) or
 HTML in WebKit (`html_view.WidgetView`). WebKit is only imported for HTML widgets, so a
 desktop with only native widgets never loads it.
+
+The window itself is either a Wayland layer-shell surface or an X11 window with dock hints;
+see session.py for which one and why.
 """
 
+import cairo
 import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
-from . import store  # noqa: E402
+try:
+    gi.require_version("GtkLayerShell", "0.1")
+    from gi.repository import GtkLayerShell  # noqa: E402
+except (ImportError, ValueError):  # not installed: X11 windows only
+    GtkLayerShell = None
 
-MARGIN = 24
+from . import placement, store  # noqa: E402
+
+MARGIN = placement.MARGIN
+_layer_shell: bool | None = None
+
+
+def layer_shell() -> bool:
+    """True if widgets are layer-shell surfaces on this display (Wayland), False for X11."""
+    global _layer_shell
+    if _layer_shell is None:
+        display = Gdk.Display.get_default()
+        _layer_shell = bool(GtkLayerShell and display and "Wayland" in type(display).__name__
+                            and hasattr(GtkLayerShell, "is_supported") and GtkLayerShell.is_supported())
+    return _layer_shell
+
+
+def dialog_parent(window):
+    """A widget window as a dialog's parent: layer surfaces can't parent normal windows."""
+    return None if window is None or getattr(window, "layer", False) else window
 
 
 def engine_of(manifest: dict) -> str:
@@ -44,49 +70,82 @@ def _transparent_window(win: Gtk.Window):
     win.connect("draw", draw)
 
 
-def _anchor_position(position: str, width: int, height: int):
+def monitors() -> list:
     display = Gdk.Display.get_default()
-    monitor = display.get_primary_monitor() or display.get_monitor(0)
+    return [display.get_monitor(i) for i in range(display.get_n_monitors())]
+
+
+def monitor_label(index: int, monitor) -> str:
+    g = monitor.get_geometry()
+    name = monitor.get_model() or monitor.get_manufacturer() or ""
+    return f"Monitor {index + 1}" + (f": {name}" if name else "") + f" ({g.width}×{g.height})"
+
+
+def chosen_monitor(manifest: dict):
+    """The monitor a widget asked for, or None (the primary one) if unset or unplugged."""
+    index, found = manifest.get("monitor"), monitors()
+    return found[index] if isinstance(index, int) and 0 <= index < len(found) else None
+
+
+def _anchor_position(position: str, width: int, height: int, monitor=None):
+    display = Gdk.Display.get_default()
+    monitor = monitor or display.get_primary_monitor() or display.get_monitor(0)
     area = monitor.get_workarea()
-    vert, _, horiz = position.partition("-")
-    if position == "center":
-        vert, horiz = "center", "center"
-    x = {"left": area.x + MARGIN,
-         "center": area.x + (area.width - width) // 2,
-         "right": area.x + area.width - width - MARGIN}.get(horiz, area.x + area.width - width - MARGIN)
-    y = {"top": area.y + MARGIN,
-         "center": area.y + (area.height - height) // 2,
-         "bottom": area.y + area.height - height - MARGIN}.get(vert, area.y + MARGIN)
-    return x, y
+    return placement.anchor_xy(position, (area.x, area.y, area.width, area.height), width, height)
+
+
+def _on_some_monitor(x: int, y: int, width: int, height: int) -> bool:
+    """Whether the middle of a widget at (x, y) is on a connected monitor (X11)."""
+    cx, cy = x + width // 2, y + height // 2
+    for m in monitors():
+        g = m.get_geometry()
+        if g.x <= cx < g.x + g.width and g.y <= cy < g.y + g.height:
+            return True
+    return False
+
+
+def _layer_edges():
+    return {"top": GtkLayerShell.Edge.TOP, "bottom": GtkLayerShell.Edge.BOTTOM,
+            "left": GtkLayerShell.Edge.LEFT, "right": GtkLayerShell.Edge.RIGHT}
 
 
 class WidgetWindow(Gtk.Window):
     """A borderless desktop widget. `callbacks` provides edit/delete/approve/close actions."""
 
-    def __init__(self, manifest: dict, cfg: dict, callbacks: dict):
+    def __init__(self, manifest: dict, cfg: dict, callbacks: dict, theme: dict | None = None):
         super().__init__(title=f"Widget: {manifest['name']}")
+        self.theme = theme
         self.manifest = manifest
         self.callbacks = callbacks
         self._save_timer = 0
         self._drag = None  # (pointer_x, pointer_y, window_x, window_y) while dragging
         self.signature = store.signature(manifest)
+        self.layer = layer_shell()
+        self._anchors: dict[str, int] = {}
+        self.lock_all = cfg.get("lock_widgets", False)
 
         _transparent_window(self)
         self.set_decorated(False)
         self.set_resizable(False)
-        self.set_skip_taskbar_hint(True)
-        self.set_skip_pager_hint(True)
-        # Not "pickit": that class belongs to the Pickit launcher (StartupWMClass), and docks
-        # such as Plank would show widgets as a running Pickit app.
-        self.set_wmclass("pickit-widget", "PickitWidget")
-        # DOCK + keep-below puts the window in the WM's "bottom" layer: always above the
-        # desktop background/icons, always below every normal window, not hidden by
-        # Show Desktop, and never raised when clicked. (A DESKTOP-type window would get
-        # buried under Nemo's desktop window as soon as the desktop is clicked.)
-        self.set_type_hint(Gdk.WindowTypeHint.DOCK)
-        self.set_keep_below(True)
-        self.stick()
-        self.connect("map-event", self._reassert_layer)
+        if self.layer:
+            # A layer-shell surface in the "bottom" layer: above the wallpaper, below every
+            # window, on every workspace, and never in a taskbar, dock or Alt+Tab.
+            GtkLayerShell.init_for_window(self)
+            GtkLayerShell.set_namespace(self, "pickit-widget")
+            GtkLayerShell.set_layer(self, GtkLayerShell.Layer.BOTTOM)
+            GtkLayerShell.set_keyboard_mode(self, GtkLayerShell.KeyboardMode.NONE)
+        else:
+            self.set_skip_taskbar_hint(True)
+            self.set_skip_pager_hint(True)
+            # DOCK + keep-below puts the window in the WM's "bottom" layer: always above the
+            # desktop background/icons, always below every normal window, not hidden by
+            # Show Desktop, and never raised when clicked. (A DESKTOP-type window would get
+            # buried under Nemo's desktop window as soon as the desktop is clicked.)
+            # Its WM_CLASS is the daemon's program name, "pickit-widget" (see __main__.py).
+            self.set_type_hint(Gdk.WindowTypeHint.DOCK)
+            self.set_keep_below(True)
+            self.stick()
+            self.connect("map-event", self._reassert_layer)
 
         self.cfg = cfg
         self.view = None
@@ -104,6 +163,8 @@ class WidgetWindow(Gtk.Window):
             self.view.destroy()
         self.engine = engine
         self.view = make_view(engine, self.cfg)
+        if self.theme:
+            self.view.set_theme(self.theme)
         self.view.enable_watchdog()
         self.view.on_drag = self._begin_drag
         self.view.connect("button-press-event", self._on_button_press)
@@ -118,12 +179,44 @@ class WidgetWindow(Gtk.Window):
         w, h = manifest["width"], manifest["height"]
         self.set_size_request(w, h)
         self.resize(w, h)
-        if reposition or "x" not in manifest:
-            x, y = _anchor_position(manifest.get("position", "top-right"), w, h)
+        moved = "x" in manifest and not reposition
+        monitor = chosen_monitor(manifest)
+        if self.layer:
+            if monitor is not None:
+                GtkLayerShell.set_monitor(self, monitor)
+            elif GtkLayerShell.get_monitor(self) is not None:  # its monitor was unplugged
+                GtkLayerShell.set_monitor(self, Gdk.Display.get_default().get_monitor(0))
+            # (Unset, the compositor picks the output. Older gtk-layer-shell can't be given None.)
+            self._set_anchors(placement.layer_moved(manifest["x"], manifest["y"]) if moved
+                              else placement.layer_anchors(manifest.get("position", "top-right")))
         else:
-            x, y = manifest["x"], manifest["y"]
-        self.move(x, y)
+            if moved and not _on_some_monitor(manifest["x"], manifest["y"], w, h):
+                moved = False  # it was on a monitor that's gone: back to its corner
+            x, y = ((manifest["x"], manifest["y"]) if moved
+                    else _anchor_position(manifest.get("position", "top-right"), w, h, monitor))
+            self.move(x, y)
+        self.update_flags(manifest)
         self.reload()
+
+    def set_theme(self, tokens: dict):
+        self.theme = tokens
+        self.view.set_theme(tokens)
+
+    def update_flags(self, manifest: dict):
+        """Apply the switches that don't need a reload (store.LIVE_FIELDS)."""
+        for key in ("locked", "click_through"):
+            self.manifest[key] = manifest.get(key, False)
+        # An empty input region lets every click through to whatever is underneath.
+        self.input_shape_combine_region(cairo.Region() if self.manifest["click_through"] else None)
+
+    def locked(self) -> bool:
+        return bool(self.manifest.get("locked") or self.lock_all)
+
+    def _set_anchors(self, anchors: dict[str, int]):
+        self._anchors = dict(anchors)
+        for name, edge in _layer_edges().items():
+            GtkLayerShell.set_anchor(self, edge, name in anchors)
+            GtkLayerShell.set_margin(self, edge, anchors.get(name, 0))
 
     def reload(self):
         wid = self.manifest["id"]
@@ -144,7 +237,10 @@ class WidgetWindow(Gtk.Window):
     # Dock windows can't be moved by the WM, so dragging is done by hand: poll the
     # pointer while the button is held and move the window along with it.
     def _begin_drag(self, _button=1):
-        if self._drag:
+        if self._drag or self.locked():
+            return
+        if self.layer:
+            self._begin_layer_drag()
             return
         pointer = Gdk.Display.get_default().get_default_seat().get_pointer()
         _, px, py = pointer.get_position()
@@ -163,6 +259,60 @@ class WidgetWindow(Gtk.Window):
         self._save_position()
         return False
 
+    # Wayland has no global pointer position; it's only known relative to our own surface,
+    # which moves along with the drag. So each step moves the widget by how far the pointer
+    # has slipped from the point where it grabbed the widget.
+    def _screen_size(self):
+        display = Gdk.Display.get_default()
+        gdk_window = self.get_window()
+        monitor = display.get_monitor_at_window(gdk_window) if gdk_window else None
+        monitor = monitor or display.get_monitor(0)
+        geometry = monitor.get_geometry()
+        return geometry.width, geometry.height
+
+    def _size(self):
+        return self.get_allocated_width(), self.get_allocated_height()
+
+    def _pointer(self):
+        """(x, y, modifier mask) of the pointer, relative to this surface."""
+        pointer = Gdk.Display.get_default().get_default_seat().get_pointer()
+        _, px, py, mask = self.get_window().get_device_position(pointer)
+        return px, py, mask
+
+    def _begin_layer_drag(self):
+        px, py, _ = self._pointer()
+        x, y = placement.layer_top_left(self._anchors, self._screen_size(), self._size())
+        self._set_anchors(placement.layer_moved(x, y))
+        self._drag = [px, py, x, y, False]
+        GLib.timeout_add(16, self._layer_drag_step)
+
+    def _layer_drag_step(self):
+        px, py, mask = self._pointer()
+        sx, sy, x, y, just_moved = self._drag
+        if not just_moved:  # skip one step after a move, so the compositor has applied it
+            nx, ny = placement.clamp(x + px - sx, y + py - sy, self._screen_size(), self._size())
+            if (nx, ny) != (x, y):
+                self._set_anchors(placement.layer_moved(nx, ny))
+                self._drag[2:] = [nx, ny, True]
+        else:
+            self._drag[4] = False
+        if mask & Gdk.ModifierType.BUTTON1_MASK:
+            return True
+        self._drag = None
+        self._save_layer_position()
+        return False
+
+    def _save_layer_position(self):
+        x, y = placement.layer_top_left(self._anchors, self._screen_size(), self._size())
+        try:
+            manifest = store.load(self.manifest["id"])
+        except FileNotFoundError:
+            return
+        if (manifest.get("x"), manifest.get("y")) != (x, y):
+            manifest["x"], manifest["y"] = x, y
+            store.save_manifest(manifest, notify=False)
+            self.manifest = manifest
+
     def _on_button_press(self, _view, event):
         if event.button == 1 and event.state & Gdk.ModifierType.MOD1_MASK:
             self._begin_drag()
@@ -173,7 +323,7 @@ class WidgetWindow(Gtk.Window):
         return False
 
     def _on_configure(self, _win, _event):
-        if self._drag:
+        if self._drag or self.layer:  # a layer surface's position is only changed by our drags
             return False
         if self._save_timer:
             GLib.source_remove(self._save_timer)
@@ -187,7 +337,15 @@ class WidgetWindow(Gtk.Window):
             manifest = store.load(self.manifest["id"])
         except FileNotFoundError:
             return False
-        if (manifest.get("x"), manifest.get("y")) != (x, y):
+        # Remember the monitor it was dragged to, so "Reset position" keeps it there.
+        display = Gdk.Display.get_default()
+        w, h = self._size()
+        found = display.get_monitor_at_point(x + w // 2, y + h // 2)
+        index = next((i for i, m in enumerate(monitors()) if m == found), None)
+        changed = (manifest.get("x"), manifest.get("y")) != (x, y)
+        if index is not None and len(monitors()) > 1 and manifest.get("monitor") != index:
+            manifest["monitor"], changed = index, True
+        if changed:
             manifest["x"], manifest["y"] = x, y
             store.save_manifest(manifest, notify=False)
             self.manifest = manifest
@@ -199,23 +357,63 @@ class WidgetWindow(Gtk.Window):
         items = [("Edit…", "edit"), ("Reload", "reload")]
         if self.manifest.get("commands"):
             items.append(("Review commands…", "approve"))
-        items += [("Reset position", "reset"), ("Export…", "export"), None, ("Hide", "hide"), ("Delete", "delete")]
+        items += [None, ("Lock position", "lock"), ("Click-through", "click_through"),
+                  ("Reset position", "reset")]
+        if len(monitors()) > 1:
+            items.append(("Move to monitor", "monitor"))
+        items += [None, ("Export…", "export"), ("Hide", "hide"), ("Delete", "delete")]
         for item in items:
             if item is None:
                 menu.append(Gtk.SeparatorMenuItem())
                 continue
             label, action = item
-            mi = Gtk.MenuItem(label=label)
+            if action in ("lock", "click_through"):
+                mi = Gtk.CheckMenuItem(label=label, active=self.locked() if action == "lock"
+                                       else bool(self.manifest.get("click_through")))
+                if action == "lock" and self.lock_all:
+                    mi.set_sensitive(False)
+                    mi.set_tooltip_text("All widgets are locked in Pickit's settings")
+                if action == "click_through":
+                    mi.set_tooltip_text("Clicks go to the desktop underneath. Turn it off in Pickit's "
+                                        "sidebar (⋮ next to the widget).")
+            elif action == "monitor":
+                mi = Gtk.MenuItem(label=label)
+                sub = Gtk.Menu()
+                current = chosen_monitor(self.manifest)
+                for i, m in enumerate(monitors()):
+                    choice = Gtk.CheckMenuItem(label=monitor_label(i, m), active=m == current)
+                    choice.set_draw_as_radio(True)
+                    choice.connect("activate", lambda _mi, i=i: self._move_to_monitor(i))
+                    sub.append(choice)
+                mi.set_submenu(sub)
+                menu.append(mi)
+                continue
+            else:
+                mi = Gtk.MenuItem(label=label)
             mi.connect("activate", lambda _mi, a=action: self._menu_action(a))
             menu.append(mi)
         menu.show_all()
         menu.attach_to_widget(self)
         return menu
 
+    def _move_to_monitor(self, index: int):
+        manifest = store.load(self.manifest["id"])
+        manifest["monitor"] = index
+        manifest.pop("x", None)
+        manifest.pop("y", None)
+        store.save_manifest(manifest, notify=False)
+        self.apply_manifest(manifest, reposition=True)
+
     def _menu_action(self, action):
         wid = self.manifest["id"]
         if action == "reload":
             self.apply_manifest(store.load(wid))
+        elif action in ("lock", "click_through"):
+            manifest = store.load(wid)
+            key = "locked" if action == "lock" else "click_through"
+            manifest[key] = not manifest.get(key, False)
+            store.save_manifest(manifest)  # the Pickit window's sidebar follows
+            self.update_flags(manifest)
         elif action == "reset":
             manifest = store.load(wid)
             manifest.pop("x", None)

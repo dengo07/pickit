@@ -1,5 +1,6 @@
 """On-disk widget storage: ~/.local/share/pickit/widgets/<id>/{widget.json,index.html}."""
 
+import datetime
 import hashlib
 import json
 import re
@@ -13,6 +14,7 @@ DATA_DIR = runtime.DATA_HOME / "pickit"
 WIDGETS_DIR = DATA_DIR / "widgets"
 # Touched after every change so the desktop daemon (a separate process) can react.
 STAMP = DATA_DIR / "changed"
+VERSIONS_KEPT = 10  # earlier versions of each widget, for Undo in the editor
 
 
 def notify_changed() -> None:
@@ -22,9 +24,13 @@ def notify_changed() -> None:
     tmp.replace(STAMP)
 
 
+# Changed without reloading the widget: position, and the lock / click-through switches.
+LIVE_FIELDS = ("x", "y", "locked", "click_through")
+
+
 def signature(manifest: dict) -> str:
-    """Identifies a widget's content; ignores position so drags don't trigger reloads."""
-    rest = {k: v for k, v in manifest.items() if k not in ("x", "y")}
+    """Identifies a widget's content; ignores LIVE_FIELDS so a drag or a lock doesn't reload it."""
+    rest = {k: v for k, v in manifest.items() if k not in LIVE_FIELDS}
     h = hashlib.sha256(json.dumps(rest, sort_keys=True).encode())
     for path in (html_path(manifest["id"]), ui_path(manifest["id"])):
         try:
@@ -99,9 +105,13 @@ def save_manifest(manifest: dict, notify: bool = True) -> None:
 
 def save_spec(spec: dict, widget_id: str | None = None, approved: bool = False,
               prompt: str | None = None) -> dict:
-    """Create or update a widget from a generated spec. Returns the manifest."""
+    """Create or update a widget from a generated spec. Returns the manifest.
+    Updating keeps the previous version (see versions())."""
     if widget_id:
         manifest = load(widget_id)
+        previous = to_spec(manifest)
+        if _content(previous) != _content(spec):
+            _save_version(widget_id, previous, (manifest.get("history") or [None])[-1])
     else:
         manifest = {"id": _slug(spec["name"]), "enabled": True, "history": []}
     engine = "native" if spec.get("engine") == "native" else "html"
@@ -159,6 +169,36 @@ def free_anchor(preferred: str) -> str:
         if anchor not in taken:
             return anchor
     return preferred
+
+
+def _content(spec: dict) -> str:
+    keys = ("name", "engine", "width", "height", "position", "commands", "ui", "html")
+    return json.dumps({k: spec.get(k) for k in keys}, sort_keys=True)
+
+
+def versions_dir(widget_id: str) -> Path:
+    return widget_dir(widget_id) / "versions"
+
+
+def _save_version(widget_id: str, spec: dict, label: str | None) -> None:
+    d = versions_dir(widget_id)
+    d.mkdir(parents=True, exist_ok=True)
+    now = datetime.datetime.now()
+    entry = {"saved": now.isoformat(timespec="seconds"), "label": label or "", "spec": spec}
+    (d / f"{now.strftime('%Y%m%dT%H%M%S%f')}.json").write_text(json.dumps(entry))
+    for old in sorted(d.glob("*.json"))[:-VERSIONS_KEPT]:
+        old.unlink()
+
+
+def versions(widget_id: str) -> list[dict]:
+    """Earlier versions of a widget, oldest first: [{"saved", "label", "spec"}]."""
+    out = []
+    for path in sorted(versions_dir(widget_id).glob("*.json")):
+        try:
+            out.append(json.loads(path.read_text()))
+        except (OSError, json.JSONDecodeError):
+            continue
+    return out
 
 
 def delete(widget_id: str) -> None:

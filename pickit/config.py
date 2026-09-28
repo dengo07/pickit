@@ -29,6 +29,7 @@ DEFAULTS = {
     # Default engine in the maker: "auto" (native whenever possible), "native" or "html".
     "engine": "auto",
     "developer_extras": False,
+    "lock_widgets": False,  # no widget can be dragged (each one can also be locked on its own)
 }
 
 

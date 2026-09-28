@@ -42,13 +42,14 @@ make flatpak
 flatpak install dist/Pickit.flatpak
 ```
 
-- **Runtime:** `org.gnome.Platform//51`, which provides GTK 3, WebKit2GTK 4.1, PyGObject, pycairo and Python 3.14.
+- **Runtime:** `org.gnome.Platform//51`, which provides GTK 3, WebKit2GTK 4.1, PyGObject, pycairo and Python 3.14. The weekly [runtime check](../.github/workflows/runtime-check.yml) opens an issue when Flathub marks it end-of-life (about a year after each GNOME release); then move `runtime-version` to the newest one.
+- **gtk-layer-shell** (for native Wayland widgets) isn't in the runtime, so the manifest builds it from its release tarball.
 - **Python dependencies:** the `anthropic` SDK and its dependencies are pinned as wheels, with URL and sha256, in [`packaging/flatpak/python-deps.json`](../packaging/flatpak/python-deps.json). The build needs no network, as Flathub requires. After changing the Python version or updating the SDK, regenerate the file:
   ```bash
   packaging/flatpak/gen-python-deps.py 3.14
   ```
 - **Sandbox permissions** (all explained in the manifest):
-  - `--socket=x11`: forces XWayland on Wayland, since widgets need X11 window hints.
+  - `--socket=wayland` and `--socket=x11`: both, even on Wayland. The Pickit window and layer-shell widgets use Wayland; on compositors without layer-shell (GNOME, Cinnamon) the widgets fall back to X11 dock windows through XWayland, which needs the X11 socket.
   - `--talk-name=org.freedesktop.Flatpak`: runs approved widget commands and the Claude CLI on the host through `flatpak-spawn --host`, and starts the daemon in its own sandbox so it outlives the maker.
   - `--filesystem=xdg-config/autostart:create`, `xdg-data/pickit`, `xdg-config/pickit`: the autostart entry, plus data shared with the other builds.
 - **Flathub:** the manifest follows Flathub's offline-build rules. The host-escape permission is inherent to what the app does (running commands on your system), so expect to justify it in the submission.
@@ -58,7 +59,7 @@ flatpak install dist/Pickit.flatpak
 Build dependencies (Debian/Ubuntu):
 
 ```bash
-sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-gtklayershell-0.1 \
   glib-networking librsvg2-common libglib2.0-bin python3-pip rsync curl
 make appimage
 ```
@@ -66,7 +67,7 @@ make appimage
 [`packaging/appimage/build-appimage.sh`](../packaging/appimage/build-appimage.sh) does the following:
 
 1. Copies the system Python (the stdlib, without tests or tkinter), PyGObject and pycairo, and pip-installs `anthropic`.
-2. Copies WebKit's helper processes, the typelibs, the GIO TLS module, the SVG pixbuf loader and the GTK schemas.
+2. Copies WebKit's helper processes, the typelibs, the GIO TLS module, the SVG pixbuf loader and the GTK schemas, plus gtk-layer-shell for native Wayland widgets. Without `gir1.2-gtklayershell-0.1` the build prints a warning and the AppImage uses X11 windows for widgets everywhere.
 3. Collects every shared library these need with `ldd`, skipping the [AppImage excludelist](https://github.com/AppImageCommunity/pkg2appimage/blob/master/excludelist): glibc, GPU drivers, X11, fontconfig and similar. These must come from the user's system.
 4. Binary-patches `libwebkit2gtk-4.1.so.0`. WebKit has its helper-process directory compiled in, with no runtime override in release builds, so the path is replaced by a same-length relative one. [`AppRun`](../packaging/appimage/AppRun) makes the working directory `$APPDIR/usr`.
 5. Packs everything with `appimagetool` (static runtime, so users don't need libfuse2).

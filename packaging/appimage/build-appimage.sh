@@ -6,8 +6,8 @@
 # The AppImage runs on distros whose glibc is at least as new as the build machine's,
 # so build on the oldest distro you want to support.
 #
-# Build deps: python3-gi python3-gi-cairo gir1.2-webkit2-4.1 glib-networking
-#             librsvg2-common python3-pip rsync curl
+# Build deps: python3-gi python3-gi-cairo gir1.2-webkit2-4.1 gir1.2-gtklayershell-0.1
+#             glib-networking librsvg2-common python3-pip rsync curl
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -82,6 +82,13 @@ roots=("$U/bin/python$PYVER" "$SYSLIB"/libgtk-3.so.0 "$SYSLIB"/libgdk-3.so.0
        "$SYSLIB"/libwebkit2gtk-4.1.so.0 "$SYSLIB"/libjavascriptcoregtk-4.1.so.0
        "$SYSLIB"/libsoup-3.0.so.0 "$SYSLIB"/libpangocairo-1.0.so.0 "$SYSLIB"/libgdk_pixbuf-2.0.so.0
        "$SYSLIB"/libatk-1.0.so.0 "$SYSLIB"/libcairo-gobject.so.2 "$SYSLIB"/librsvg-2.so.2)
+# Wayland layer-shell (widgets in the desktop layer on KDE, Hyprland, Sway, ...). Optional:
+# without it, widgets use X11 windows everywhere.
+if [ -e "$SYSLIB/libgtk-layer-shell.so.0" ] && [ -e "$SYSLIB/girepository-1.0/GtkLayerShell-0.1.typelib" ]; then
+  roots+=("$SYSLIB/libgtk-layer-shell.so.0")
+else
+  echo "    WARNING: gtk-layer-shell not found (gir1.2-gtklayershell-0.1): no native Wayland widgets" >&2
+fi
 mapfile -t more < <(find "$U/lib/python$PYVER/lib-dynload" "$U/lib/python3/dist-packages" "$L" \
                       -name '*.so*' -type f; find "$L/webkit2gtk-4.1" -type f -perm -u+x)
 count=0
