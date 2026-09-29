@@ -1,17 +1,89 @@
-"""HTML engine: a widget page in a transparent WebKit view (desktop or maker preview)."""
+"""HTML engine: a widget page in a transparent WebKit view (desktop or maker preview).
 
+Pages are served from Pickit's own `pickit-widget://<host>/` scheme, not from file:// URLs:
+the scheme serves nothing but the widget's own HTML, so widget scripts can't read local
+files, and each widget is its own origin (its own localStorage). Every page gets a Content
+Security Policy that lets it load fonts and libraries from a few CDNs but not send data
+anywhere, and it can't navigate away or open windows.
+"""
+
+import hashlib
+import itertools
 import json
+import re
 import weakref
+from urllib.parse import urlsplit
 
 import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("WebKit2", "4.1")
-from gi.repository import Gdk, GLib, WebKit2  # noqa: E402
+gi.require_version("Soup", "3.0")
+from gi.repository import Gdk, Gio, GLib, Soup, WebKit2  # noqa: E402
 
 from . import theme as themes  # noqa: E402
 from .bridge import BRIDGE_JS, CommandRunner  # noqa: E402
+
+SCHEME = "pickit-widget"
+# The CDNs the AI instructions allow (prompts/system.md) may serve scripts, styles and fonts.
+# Nothing may send data out: no fetch/XHR/WebSocket/beacons, no remote images, forms or frames.
+CDNS = "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com"
+CSP = "; ".join([
+    "default-src 'none'",
+    f"script-src 'unsafe-inline' 'unsafe-eval' {CDNS}",
+    f"style-src 'unsafe-inline' https://fonts.googleapis.com {CDNS}",
+    f"font-src data: https://fonts.gstatic.com {CDNS}",
+    "img-src data: blob:",
+    "media-src data: blob:",
+    "connect-src 'none'",
+    "form-action 'none'",
+    "frame-src 'none'",
+    "worker-src 'none'",
+    "base-uri 'none'",
+])
+
+_pages: dict[str, str] = {}  # host -> the HTML that pickit-widget://host/ serves
+_view_numbers = itertools.count(1)
+_scheme_registered = False
+
+
+def _register_scheme():
+    """Once per process, before the first page loads."""
+    global _scheme_registered
+    if _scheme_registered:
+        return
+    context = WebKit2.WebContext.get_default()
+    context.register_uri_scheme(SCHEME, _serve)
+    # "Secure", so https fonts and libraries aren't blocked as mixed content. Deliberately
+    # not "local": local schemes may read file:// URLs.
+    context.get_security_manager().register_uri_scheme_as_secure(SCHEME)
+    _scheme_registered = True
+
+
+def _serve(request):
+    parts = urlsplit(request.get_uri())
+    html = _pages.get(parts.hostname or "")
+    if html is None or parts.path not in ("", "/"):  # the page itself and nothing else
+        request.finish_error(GLib.Error.new_literal(Gio.io_error_quark(), "Not found",
+                                                    Gio.IOErrorEnum.NOT_FOUND))
+        return
+    data = GLib.Bytes.new(html.encode())
+    response = WebKit2.URISchemeResponse.new(Gio.MemoryInputStream.new_from_bytes(data), data.get_size())
+    response.set_content_type("text/html; charset=utf-8")
+    headers = Soup.MessageHeaders.new(Soup.MessageHeadersType.RESPONSE)
+    # A header, not a <meta>: the page can add restrictions of its own but never lift these.
+    headers.append("Content-Security-Policy", CSP)
+    response.set_http_headers(headers)
+    request.finish_with_response(response)
+
+
+def host_for(name: str) -> str:
+    """A valid host name for a widget id (ids are already, unless someone renamed a folder)."""
+    if re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", name):
+        return name
+    return "w-" + hashlib.sha256(name.encode()).hexdigest()[:20]
+
 
 WATCHDOG_SECONDS = 30
 MAX_CRASH_RELOADS = 5  # per 10 minutes, so a page that always crashes doesn't loop forever
@@ -90,6 +162,7 @@ class WidgetView(WebKit2.WebView):
     """A WebView with the `window.widget` bridge. Commands run only if `run_commands`."""
 
     def __init__(self, developer_extras=False, background: str | None = None, shared=False):
+        _register_scheme()
         manager = WebKit2.UserContentManager()
         manager.add_script(WebKit2.UserScript(
             BRIDGE_JS, WebKit2.UserContentInjectedFrames.TOP_FRAME,
@@ -109,14 +182,18 @@ class WidgetView(WebKit2.WebView):
 
         settings = self.get_settings()
         settings.set_enable_developer_extras(developer_extras)
-        settings.set_allow_file_access_from_file_urls(True)
         color = Gdk.RGBA(0, 0, 0, 0)
         if background:
             color.parse(background)
         self.set_background_color(color)
         self.connect("load-changed", self._on_load_changed)
         self.connect("web-process-terminated", self._on_web_process_terminated)
+        self.connect("decide-policy", self._on_decide_policy)
 
+        # Previews get a host of their own; desktop widgets use their id, so they keep their
+        # localStorage across restarts.
+        self._host = f"view-{next(_view_numbers)}"
+        self._loads = 0
         self.runner: CommandRunner | None = None
         self._commands: dict = {}
         self._run_commands = False
@@ -128,13 +205,19 @@ class WidgetView(WebKit2.WebView):
         self.on_drag = None  # callable(button) set by the hosting window
         self._on_select = None  # "Select part" callback in the maker preview
 
-    def load_widget(self, html: str, commands: dict, run_commands: bool, base_uri: str | None = None):
+    def load_widget(self, html: str, commands: dict, run_commands: bool, host: str | None = None):
+        """`host` is the page's origin: the widget id on the desktop, or this view's own."""
         self._stop_runner()
-        self._last_load = (html, commands, run_commands, base_uri)
+        self._last_load = (html, commands, run_commands, host)
         self._commands = commands or {}
         self._run_commands = run_commands and bool(self._commands)
         self._loaded = self._ping_pending = False
-        self.load_html(html, base_uri or "file:///")
+        if host:
+            _pages.pop(self._host, None)
+            self._host = host_for(host)
+        _pages[self._host] = html
+        self._loads += 1  # a new URL each time, so WebKit never shows a cached page
+        self.load_uri(f"{SCHEME}://{self._host}/?load={self._loads}")
 
     def reload_widget(self):
         if self._last_load:
@@ -175,6 +258,21 @@ class WidgetView(WebKit2.WebView):
             self._stop_runner()
             self.runner = CommandRunner(self._commands, self._deliver)
             self.runner.start()
+
+    def _on_decide_policy(self, _view, decision, kind):
+        """The page may reload itself (or follow #links), but never leave: no navigating
+        elsewhere, no new windows, no downloads. CSP alone doesn't cover those."""
+        types = WebKit2.PolicyDecisionType
+        if kind == types.NAVIGATION_ACTION:
+            parts = urlsplit(decision.get_navigation_action().get_request().get_uri())
+            if parts.scheme == SCHEME and parts.hostname == self._host:
+                return False
+            decision.ignore()
+            return True
+        if kind == types.NEW_WINDOW_ACTION or (kind == types.RESPONSE and not decision.is_mime_type_supported()):
+            decision.ignore()
+            return True
+        return False
 
     # --- self-healing -------------------------------------------------------
     def _on_web_process_terminated(self, _view, reason):
@@ -263,6 +361,7 @@ class WidgetView(WebKit2.WebView):
 
     def shutdown(self):
         self._stop_runner()
+        _pages.pop(self._host, None)
         if self._watchdog:
             GLib.source_remove(self._watchdog)
             self._watchdog = 0

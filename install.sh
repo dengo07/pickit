@@ -15,6 +15,10 @@ python3 -c "import gi; gi.require_version('GtkLayerShell','0.1')" 2>/dev/null ||
   echo "Optional, for native Wayland widgets on KDE, Hyprland, Sway and similar:"
   echo "  sudo apt install gir1.2-gtklayershell-0.1"
 }
+python3 -c "import gi; gi.require_version('Secret','1')" 2>/dev/null || {
+  echo "Optional, to keep API keys in your desktop keyring instead of config.json:"
+  echo "  sudo apt install gir1.2-secret-1"
+}
 install -Dm644 "$DIR/pickit/data/$APP_ID.svg" "$SHARE/icons/hicolor/scalable/apps/$APP_ID.svg"
 sed "s|^Exec=pickit|Exec=env PYTHONPATH=$DIR python3 -m pickit|" "$DIR/pickit/data/$APP_ID.desktop" \
   > "$SHARE/applications/$APP_ID.desktop"

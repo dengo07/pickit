@@ -226,7 +226,7 @@ class WidgetWindow(Gtk.Window):
         if self.engine == "native":
             self.view.load_widget(store.load_ui(wid), commands, approved)
         else:
-            self.view.load_widget(store.load_html(wid), commands, approved, store.html_path(wid).as_uri())
+            self.view.load_widget(store.load_html(wid), commands, approved, host=wid)
 
     def _reassert_layer(self, *_):
         self.set_keep_below(True)

@@ -51,7 +51,12 @@ class ClaudeCLIBackend:
             raise SetupError("Claude Code (the `claude` command) isn't installed. Install it and log in, "
                              "or choose another backend in Settings.")
         return exe
-
+    @staticmethod
+    def _empty_dir() -> Path:
+        base = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+        d = base / "pickit" / "claude-cwd"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
     def check(self) -> str:
         return f"Found Claude Code at {self._exe()}"
 
@@ -64,12 +69,17 @@ class ClaudeCLIBackend:
             prompt = "\n\n".join(f"<{m['role']}>\n{m['content']}\n</{m['role']}>" for m in messages)
             prompt += "\n\nRespond to the last <user> message."
         cmd = [exe, "-p", "--output-format", "json", "--tools", "", "--no-session-persistence",
+               "--setting-sources","",
+               "--settings","",
+               "--disable-slash-commands",
+               "--safe-mode",
+               "--strict-mcp-config",
                "--system-prompt", system]
         if self.model:
             cmd += ["--model", self.model]
         try:
             proc = subprocess.run(runtime.host_argv(cmd), input=prompt, capture_output=True, text=True,
-                                  timeout=self.timeout, env=runtime.host_env(), cwd=str(Path.home()))
+                                  timeout=self.timeout, env=runtime.host_env(), cwd=str(self._empty_dir()))
         except subprocess.TimeoutExpired:
             raise BackendError(f"Claude CLI timed out after {self.timeout}s") from None
         try:
@@ -111,6 +121,7 @@ class AnthropicBackend:
             raise SetupError("The Anthropic API key was rejected. Check it in Settings.") from None
         except anthropic.NotFoundError:
             raise SetupError(f"The model \"{self.model}\" doesn't exist. Check the model name.") from None
+
         except anthropic.APIError as e:
             raise BackendError(f"Anthropic API error: {e}") from None
         return f"Key works · {self.model} is available"

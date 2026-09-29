@@ -32,6 +32,9 @@ from .widget_window import engine_of, make_view  # noqa: E402
 APP_ID = runtime.APP_ID
 IMPORT_NOTE = ("This widget comes from a file, and anyone can write one. Read every command, and only "
                "approve the ones you understand.")
+HTML_IMPORT_NOTE = ("It's an HTML widget, so it contains JavaScript, and anyone can write such a file. "
+                    "Pickit keeps the script away from your files and the network, but only open widgets "
+                    "from people you trust.")
 
 EXAMPLES = [
     ("Minimal clock", "A big minimalist clock with the date underneath, white text with a soft shadow"),
@@ -247,7 +250,7 @@ class SettingsDialog(Gtk.Dialog):
         cfg.update(self.values())
         cfg.update({"autostart": self.login.get_active(), "developer_extras": self.devtools.get_active(),
                     "lock_widgets": self.lock_all.get_active()})
-        autostart.set_enabled(self.login.get_active())
+        autostart.set_enabled(self.login.get_active(), cfg.get("autostart_command", ""))
 
 
 class MakerWindow(Gtk.ApplicationWindow):
@@ -973,10 +976,22 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.gallery_window.connect("destroy", lambda _w: setattr(self, "gallery_window", None))
         self.gallery_window.present()
 
-    def open_spec(self, spec: dict, history: str, origin: str, note: str | None = None):
-        """Load a ready-made spec (gallery item, imported file) as a new draft."""
+    def open_spec(self, spec: dict, history: str, origin: str, note: str | None = None,
+                  untrusted: bool = False) -> bool:
+        """Load a ready-made spec (gallery item, imported file) as a new draft. An `untrusted`
+        one (a file) opens only if the user trusts it: they approve its commands, and an HTML
+        widget without commands still asks, since it contains JavaScript."""
         if self.busy or not self._can_drop_code_edits():
-            return
+            return False
+        if untrusted:
+            if spec["commands"]:
+                approved = approval_dialog(self, spec["name"], spec["commands"], note=note,
+                                           accept="Approve and open", reject="Cancel")
+            else:
+                approved = engine_of(spec) != "html" or confirm(
+                    self, f"Open “{spec['name']}”?", "Open", destructive=False, detail=HTML_IMPORT_NOTE)
+            if not approved:
+                return False
         self.present()
         self.code_dirty = False
         self._clear_selection()
@@ -984,12 +999,13 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.draft, self.editing_id, self.prompts, self.auto_place = spec, None, [history], False
         self.undo_stack, self.redo_stack, self.approved_hashes = [], [], set()
         self.prompt.get_buffer().set_text("")
-        self.draft_approved = not spec["commands"] or approval_dialog(self, spec["name"], spec["commands"],
-                                                                      note=note)
+        self.draft_approved = untrusted or not spec["commands"] or approval_dialog(
+            self, spec["name"], spec["commands"], note=note)
         self._note_approved()
         self._show_preview()
         self.status.set_text(f"Opened “{spec['name']}” from {origin}. Place it on the desktop, or describe a "
                              "change and press Refine.")
+        return True
 
     def add_from_gallery(self, item, parent=None) -> bool:
         spec = dict(item.spec)
@@ -1018,7 +1034,7 @@ class MakerWindow(Gtk.ApplicationWindow):
             error_dialog(self, "Could not import the widget", str(e))
             return False
         name = path.rsplit("/", 1)[-1]
-        self.open_spec(spec, f"Imported from {name}", name, note=IMPORT_NOTE)
+        self.open_spec(spec, f"Imported from {name}", name, note=IMPORT_NOTE, untrusted=True)
         return False  # also used as an idle callback
 
     def export(self, widget_id: str):
@@ -1126,6 +1142,9 @@ class PickitApp(Gtk.Application):
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
+        # Only the first instance gets here (later launches hand over their command line), so
+        # only it reads the API keys from the keyring.
+        self.cfg = config.load(with_secrets=True)
         install_css()
         Gtk.Window.set_default_icon_from_file(str(autostart.DATA_FILES / f"{APP_ID}.svg"))
         autostart.install_launcher()

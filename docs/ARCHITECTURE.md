@@ -52,7 +52,7 @@ sequenceDiagram
 | `share.py` | `.pickit` widget files: export (spec only: no approval, position or history) and import (full validation, approval required). |
 | `runtime.py` | Detects source, Flatpak or AppImage; handles host command wrapping (`flatpak-spawn --host`), self-launching and locating the Claude CLI. |
 | `autostart.py` | Launches the daemon detached, writes the XDG autostart entry, and adds the AppImage's menu entry. |
-| `config.py` | `~/.config/pickit/config.json`. |
+| `config.py`, `secret_store.py` | `~/.config/pickit/config.json`, with the API keys in the desktop keyring when there is one. |
 | `prompts/system.md`, `prompts/native_examples/` | The system prompt: engine choice, the native component reference, the HTML contract, command and design rules, plus complete native examples. |
 
 ## Key decisions

@@ -3,7 +3,30 @@
 All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
 
+## [1.5.1] - 2026-09-29
+
+A security release. Please update, especially if you open `.pickit` files from other people. Thanks to the researcher(silverfox-2096) who reported these issues privately.
+
+### Security
+- **HTML widgets could read your files and send them out.** Widget pages ran from `file://` with local file access turned on and no Content Security Policy. A widget, including an imported `.pickit` file without any commands, could read files such as SSH keys or `config.json` and send them to a server, without asking. Now:
+  - Pages are served from Pickit's own `pickit-widget://` address, which serves the widget's page and nothing else.
+  - A Content Security Policy blocks everything that could send data: `fetch`, `XMLHttpRequest`, WebSocket, `sendBeacon`, forms, frames, workers, and images or media from URLs. Scripts, styles and fonts may still load from `cdn.jsdelivr.net`, `cdnjs.cloudflare.com` and Google Fonts.
+  - Widget pages can't navigate away, open windows or start downloads.
+  - Each widget is its own origin, so one widget can't read another's `localStorage`.
+- **Imported widgets open only when you trust them.** An HTML widget from a `.pickit` file asks before it opens even when it has no commands, since it contains JavaScript. Rejecting a file's commands now cancels the import instead of opening it without them.
+- **Claude Code runs isolated.** Generating a widget with the Claude Code CLI no longer loads your Claude Code hooks, plugins, skills or MCP servers: before, each generation could start your MCP servers, including ones holding credentials. It also runs in an empty folder, so no `CLAUDE.md` is read.
+- **API keys are kept in your desktop keyring** (GNOME Keyring, KWallet or another Secret Service) instead of `config.json`. Keys saved by earlier versions move there the first time you open Pickit. Without a keyring they stay in `config.json`, readable only by you, as before. The widget daemon never reads them.
+- SECURITY.md now says clearly that the Flatpak sandbox doesn't contain widget commands or the Claude Code CLI, that command approval doesn't protect against software already running as you, and that desktop widget pages share one WebKit process.
+
+### Added
+- `"autostart_command"` in `config.json` sets the command the login entry runs, for example to start Pickit inside a Firejail or bubblewrap sandbox.
+
+### Changed
+- **HTML widgets can no longer use the network from their page.** `fetch` and images from URLs no longer work. Their data comes through approved commands, as the AI instructions already said, and pictures come as `data:` URLs. The AI instructions now say so, but an older HTML widget that relied on them may show empty parts.
+- **HTML widgets start with empty `localStorage`**, because each widget has a new origin. Anything a widget saved there before, such as a timer's state, is gone once.
+- **The Claude Code CLI's model setting is ignored**, since its settings aren't loaded. Choose the model in Pickit's Settings; when that's empty, the CLI's default model is used.
 
 ## [1.5.0] - 2026-09-28
 
@@ -123,7 +146,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/dengo07/pickit/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/dengo07/pickit/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/dengo07/pickit/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dengo07/pickit/compare/v1.2.0...v1.3.0

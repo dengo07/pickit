@@ -16,6 +16,9 @@ finish-args:
   # Widgets' approved shell commands and the Claude Code CLI run on the host
   # (via flatpak-spawn --host); the desktop daemon is started the same way.
   - --talk-name=org.freedesktop.Flatpak
+  # API keys in the desktop keyring: the system one (secret_store.py talks to it directly), not
+  # a keyring file in the sandbox, as the AppImage and source versions share config.json.
+  - --talk-name=org.freedesktop.secrets
   # Refresh widgets immediately on power changes, resume from sleep and network changes.
   - --system-talk-name=org.freedesktop.UPower
   - --system-talk-name=org.freedesktop.login1

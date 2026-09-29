@@ -24,17 +24,22 @@ def is_enabled() -> bool:
     return AUTOSTART_FILE.exists()
 
 
-def set_enabled(enabled: bool) -> None:
+def set_enabled(enabled: bool, command: str = "") -> None:
+    """Start the widgets at login, or stop doing so. `command` replaces Pickit's own command
+    line (config "autostart_command"), e.g. to start it inside a Firejail sandbox."""
     if not enabled:
         AUTOSTART_FILE.unlink(missing_ok=True)
         return
+    # One line only (a newline would add keys to the desktop entry), and "%" is special there.
+    command = command.replace("\r", " ").replace("\n", " ").strip().replace("%", "%%")
+    command = command or runtime.autostart_exec()
     AUTOSTART_FILE.parent.mkdir(parents=True, exist_ok=True)
     AUTOSTART_FILE.write_text(
         "[Desktop Entry]\n"
         "Type=Application\n"
         "Name=Pickit (desktop widgets)\n"
         "Comment=Keeps your AI-generated widgets on the desktop\n"
-        f"Exec={runtime.autostart_exec()}\n"
+        f"Exec={command}\n"
         f"Icon={runtime.APP_ID}\n"
         "X-GNOME-Autostart-enabled=true\n"
         "X-GNOME-Autostart-Delay=3\n"
