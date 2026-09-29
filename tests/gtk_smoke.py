@@ -140,6 +140,50 @@ assert evaluate(other, "window.v") == "null", "a widget read another widget's lo
 server.shutdown()
 assert not hits, f"a widget page sent requests: {hits}"
 print("ok: widget pages can't read files, send data, navigate away or read other widgets' storage")
+view.shutdown()
+other.shutdown()
+
+
+# Replaced views end their web process (WebKit 2.54 keeps it otherwise, ~150 MB each time the
+# maker replaces its preview); shared desktop widgets keep theirs until the last one closes.
+def web_processes():
+    me, count = str(os.getpid()), 0
+    for pid in filter(str.isdigit, os.listdir("/proc")):
+        try:
+            parent = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1]
+            count += parent == me and "WebKitWebProcess" in Path(f"/proc/{pid}/cmdline").read_text()
+        except OSError:
+            pass
+    return count
+
+
+def wait(ms):
+    GLib.timeout_add(ms, loop.quit)
+    loop.run()
+
+
+for i in range(3):
+    preview = WidgetView()
+    preview.load_widget(f"<html><body>{i}</body></html>", {}, False)
+    wait(800)
+    assert web_processes() == 1, f"replaced previews left {web_processes()} web processes"
+    preview.shutdown()
+    preview.destroy()
+wait(500)
+assert web_processes() == 0, "a closed preview kept its web process"
+shared = [WidgetView(shared=True) for _ in range(2)]
+for i, v in enumerate(shared):
+    v.load_widget(f"<html><body>s{i}</body></html>", {}, False)
+wait(1200)
+shared[0].shutdown()
+shared[0].destroy()
+wait(500)
+assert evaluate(shared[1], "document.body.textContent") == "s1", "closing one widget ended the shared process"
+shared[1].shutdown()
+shared[1].destroy()
+wait(500)
+assert web_processes() == 0, "the last shared widget kept the web process"
+print("ok: closed widget pages end their web process; shared ones with the last widget")
 for w in windows:
     w.destroy()
 Gtk.main_iteration_do(False)

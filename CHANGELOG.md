@@ -28,6 +28,9 @@ A security release. Please update, especially if you open `.pickit` files from o
 - **HTML widgets start with empty `localStorage`**, because each widget has a new origin. Anything a widget saved there before, such as a timer's state, is gone once.
 - **The Claude Code CLI's model setting is ignored**, since its settings aren't loaded. Choose the model in Pickit's Settings; when that's empty, the CLI's default model is used.
 
+### Fixed
+- The Pickit window no longer leaves a WebKit process (about 150 MB) running each time it replaces an HTML widget's preview, for example when you open another widget to edit. This happened with the Flatpak, whose newer WebKit keeps the process of a closed view. Desktop HTML widgets also end their shared process when the last of them closes.
+
 ## [1.5.0] - 2026-09-28
 
 ### Added

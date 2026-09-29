@@ -177,6 +177,8 @@ class WidgetView(WebKit2.WebView):
         if anchor is not None:
             kwargs["related_view"] = anchor  # same web process as the other widgets
         super().__init__(**kwargs)
+        self._shared = shared
+        self._closed = False
         if shared:
             _shared_views.add(self)
 
@@ -277,6 +279,8 @@ class WidgetView(WebKit2.WebView):
     # --- self-healing -------------------------------------------------------
     def _on_web_process_terminated(self, _view, reason):
         """The page's WebKit process crashed or was killed: bring the widget back."""
+        if self._closed:
+            return  # shutdown() ended it on purpose
         now = GLib.get_monotonic_time() / 1e6
         self._crashes = [t for t in self._crashes if now - t < 600] + [now]
         self._stop_runner()
@@ -360,8 +364,18 @@ class WidgetView(WebKit2.WebView):
             self.runner = None
 
     def shutdown(self):
+        """Before the view is destroyed: stop its commands and end its web process, which
+        WebKit 2.54 (the Flatpak runtime's) otherwise keeps running after the view is gone,
+        about 150 MB each time the maker replaces its preview. A shared process ends only with
+        the last desktop widget that uses it."""
         self._stop_runner()
         _pages.pop(self._host, None)
         if self._watchdog:
             GLib.source_remove(self._watchdog)
             self._watchdog = 0
+        if self._closed:
+            return
+        self._closed = True
+        _shared_views.discard(self)  # and never the process a new widget joins
+        if not self._shared or not _shared_views:
+            self.terminate_web_process()
