@@ -139,9 +139,9 @@ class NativeView(Gtk.EventBox):
         self.connect_after("draw", self._draw_selection)
 
     # --- lifecycle ------------------------------------------------------------------
-    def load_widget(self, ui: dict, commands: dict, run_commands: bool, base_uri: str | None = None):
+    def load_widget(self, ui: dict, commands: dict, run_commands: bool, host: str | None = None):
         self.shutdown()
-        self._last_load = (ui, commands, run_commands, base_uri)
+        self._last_load = (ui, commands, run_commands, host)
         self._commands = commands or {}
         for child in self.get_children():
             self.remove(child)

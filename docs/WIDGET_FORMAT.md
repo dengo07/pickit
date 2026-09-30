@@ -140,8 +140,10 @@ window.addEventListener("pickit-theme", () => chart.setColor(widget.theme.accent
 Rendering rules:
 - The window is exactly `width` × `height` and transparent. Use `html, body { margin: 0; background: transparent; overflow: hidden; }` and draw your own panel if you want one.
 - `backdrop-filter` can't blur what's behind the window.
-- Browser `fetch()` to other sites is blocked by CORS. Fetch data with a command instead (`curl -s …`).
-- External scripts and fonts load normally over the network, for example from `cdn.jsdelivr.net` or `fonts.googleapis.com`.
+- The page is served from `pickit-widget://<widget id>/` with a Content Security Policy. It may load scripts and styles from `cdn.jsdelivr.net` and `cdnjs.cloudflare.com`, and fonts from Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) and those CDNs. Everything else that could reach the network is blocked: `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, forms, frames, workers, and images or media from URLs. Fetch data with a command instead (`curl -s …`), and use `data:` URLs, inline SVG or `<canvas>` for pictures.
+- `file://` URLs are blocked too, and the scheme serves nothing but the page itself, so there are no separate asset files: keep everything in `index.html`.
+- The page can't navigate away, open windows or start downloads.
+- `localStorage` works and belongs to that widget alone; other widgets can't read it.
 - Right-click is reserved for Pickit's widget menu.
 - Never animate forever (`animation: … infinite`, or re-triggered transitions). WebKit then redraws at 60 fps nonstop.
 

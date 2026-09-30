@@ -84,12 +84,12 @@ def build_approval_dialog(parent, name: str, commands: dict, note: str | None = 
     return dlg
 
 
-def confirm(parent, text: str, action: str = "Delete") -> bool:
+def confirm(parent, text: str, action: str = "Delete", destructive: bool = True, detail: str = "") -> bool:
     dlg = Gtk.MessageDialog(transient_for=parent, modal=True, message_type=Gtk.MessageType.QUESTION,
-                            buttons=Gtk.ButtonsType.NONE, text=text)
+                            buttons=Gtk.ButtonsType.NONE, text=text, secondary_text=detail or None)
     dlg.add_button("Cancel", Gtk.ResponseType.CANCEL)
     btn = dlg.add_button(action, Gtk.ResponseType.OK)
-    btn.get_style_context().add_class("destructive-action")
+    btn.get_style_context().add_class("destructive-action" if destructive else "suggested-action")
     ok = dlg.run() == Gtk.ResponseType.OK
     dlg.destroy()
     return ok

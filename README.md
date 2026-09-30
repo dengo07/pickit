@@ -55,7 +55,7 @@ flatpak install https://dengo07.github.io/pickit/Pickit.flatpakref
 
 </details>
 
-- **Flatpak** works on any distro with Flatpak. It's preinstalled on Linux Mint, Fedora, Pop!_OS, Zorin, elementary and Steam Deck; on Ubuntu or Debian, run `sudo apt install flatpak` first.
+- **Flatpak** works on any distro with Flatpak. It's preinstalled on Linux Mint, Fedora, Pop!_OS, Zorin, elementary and Steam Deck; on Ubuntu or Debian, run `sudo apt install flatpak` first. The Flatpak sandbox doesn't contain widget commands or the Claude Code CLI: they run on your system after you approve them (see [SECURITY.md](SECURITY.md)).
 - **AppImage** needs glibc 2.39 or newer: Ubuntu 24.04+, Mint 22+, Fedora 40+, Debian 13+, Arch, openSUSE Tumbleweed.
 
 All versions share the same widgets and settings, so you can switch between them.
@@ -195,7 +195,7 @@ Its commands may not be approved yet (right-click → **Review commands…**), o
 <details>
 <summary><b>Widgets don't come back after a reboot</b></summary>
 
-Check that **Settings → Keep widgets on the desktop after reboot** is on. It creates `~/.config/autostart/pickit.desktop`.
+Check that **Settings → Keep widgets on the desktop after reboot** is on. It creates `~/.config/autostart/pickit.desktop`. If you start Pickit through a sandbox such as Firejail, set `"autostart_command"` in `~/.config/pickit/config.json` to that command line; the login entry then uses it.
 </details>
 
 ## Development
@@ -205,6 +205,7 @@ Run from source on Debian, Ubuntu or Mint:
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 sudo apt install gir1.2-gtklayershell-0.1   # optional: native Wayland widgets
+sudo apt install gir1.2-secret-1             # optional: API keys in your desktop keyring
 git clone https://github.com/dengo07/pickit && cd pickit
 python3 -m pickit            # optional: ./install.sh adds a menu entry
 pip install anthropic        # only needed for the Anthropic API backend

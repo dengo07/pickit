@@ -64,7 +64,7 @@ class DesktopDaemon(Gtk.Application):
         self.hold()  # stay alive even with zero widgets, so new ones appear immediately
         cfg = config.load()
         if cfg.get("autostart", True):
-            autostart.set_enabled(True)  # also refreshes the path if the project moved
+            autostart.set_enabled(True, cfg.get("autostart_command", ""))  # also refreshes a moved path
         self._monitor = store.watch(self.reconcile)
         self._events = SystemEvents(self.refresh_all)
         self._theme = None
