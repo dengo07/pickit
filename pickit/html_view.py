@@ -3,8 +3,8 @@
 Pages are served from Pickit's own `pickit-widget://<host>/` scheme, not from file:// URLs:
 the scheme serves nothing but the widget's own HTML, so widget scripts can't read local
 files, and each widget is its own origin (its own localStorage). Every page gets a Content
-Security Policy that lets it load fonts and libraries from a few CDNs but not send data
-anywhere, and it can't navigate away or open windows.
+Security Policy that blocks every request except scripts, styles and fonts from a few CDNs
+(see SECURITY.md for what those can still reveal), and it can't navigate away or open windows.
 """
 
 import hashlib
@@ -27,7 +27,7 @@ from .bridge import BRIDGE_JS, CommandRunner  # noqa: E402
 
 SCHEME = "pickit-widget"
 # The CDNs the AI instructions allow (prompts/system.md) may serve scripts, styles and fonts.
-# Nothing may send data out: no fetch/XHR/WebSocket/beacons, no remote images, forms or frames.
+# Nothing else may load: no fetch/XHR/WebSocket/beacons, no remote images, forms or frames.
 CDNS = "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com"
 CSP = "; ".join([
     "default-src 'none'",

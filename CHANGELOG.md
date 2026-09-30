@@ -12,7 +12,7 @@ A security release. Please update, especially if you open `.pickit` files from o
 ### Security
 - **HTML widgets could read your files and send them out.** Widget pages ran from `file://` with local file access turned on and no Content Security Policy. A widget, including an imported `.pickit` file without any commands, could read files such as SSH keys or `config.json` and send them to a server, without asking. Now:
   - Pages are served from Pickit's own `pickit-widget://` address, which serves the widget's page and nothing else.
-  - A Content Security Policy blocks everything that could send data: `fetch`, `XMLHttpRequest`, WebSocket, `sendBeacon`, forms, frames, workers, and images or media from URLs. Scripts, styles and fonts may still load from `cdn.jsdelivr.net`, `cdnjs.cloudflare.com` and Google Fonts.
+  - A Content Security Policy blocks `fetch`, `XMLHttpRequest`, WebSocket, `sendBeacon`, forms, frames, workers, and images or media from URLs. The one exception: scripts, styles and fonts may still load from `cdn.jsdelivr.net`, `cdnjs.cloudflare.com` and Google Fonts, so those requests still leave your computer (see SECURITY.md).
   - Widget pages can't navigate away, open windows or start downloads.
   - Each widget is its own origin, so one widget can't read another's `localStorage`.
 - **Imported widgets open only when you trust them.** An HTML widget from a `.pickit` file asks before it opens even when it has no commands, since it contains JavaScript. Rejecting a file's commands now cancels the import instead of opening it without them.

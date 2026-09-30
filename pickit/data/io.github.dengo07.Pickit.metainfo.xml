@@ -64,7 +64,7 @@
       <description>
         <p>A security release. Please update, especially if you open widget files from other people.</p>
         <ul>
-          <li>HTML widgets can no longer read your files or send data anywhere</li>
+          <li>HTML widgets can no longer read your files, and can only load fonts and libraries from a few trusted CDNs</li>
           <li>Widget files from other people open only after you trust them</li>
           <li>Generating widgets with Claude Code no longer loads your Claude Code plugins, hooks or MCP servers</li>
           <li>API keys are kept in your desktop keyring instead of the settings file</li>
