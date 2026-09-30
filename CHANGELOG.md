@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [1.5.1] - 2026-09-29
+## [1.5.1] - 2026-09-30
 
 A security release. Please update, especially if you open `.pickit` files from other people. Thanks to the researcher(silverfox-2096) who reported these issues privately.
 
