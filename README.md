@@ -12,6 +12,9 @@
 ## Example desktop with widgets made with pickit(Including the cats :) )
 <img src="docs/screenshots/macats.gif" width="720" alt="Example desktopt">
 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 [![CI](https://github.com/dengo07/pickit/actions/workflows/ci.yml/badge.svg)](https://github.com/dengo07/pickit/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/dengo07/pickit)](https://github.com/dengo07/pickit/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
