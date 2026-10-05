@@ -2,9 +2,18 @@
 
 <img src="pickit/data/io.github.dengo07.Pickit.svg" width="96" alt="Pickit icon">
 
+
+
+
 # Pickit
 
 **Describe a desktop widget in plain words, and get it on your Linux desktop.**
+
+## Example desktop with widgets made with pickit(Including the cats :) )
+<img src="docs/screenshots/macats.gif" width="720" alt="Example desktopt">
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 [![CI](https://github.com/dengo07/pickit/actions/workflows/ci.yml/badge.svg)](https://github.com/dengo07/pickit/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/dengo07/pickit)](https://github.com/dengo07/pickit/releases/latest)
