@@ -12,7 +12,18 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk, Pango  # noqa: E402
 
-from . import autostart, backends, codeedit, config, generator, runtime, share, store  # noqa: E402
+from . import (  # noqa: E402
+    approvals,
+    autostart,
+    backends,
+    codeedit,
+    config,
+    generator,
+    runtime,
+    sandbox,
+    share,
+    store,
+)
 from . import theme as themes  # noqa: E402
 from .code_view import CodeView  # noqa: E402
 from .dialogs import (  # noqa: E402
@@ -161,11 +172,48 @@ class SettingsDialog(Gtk.Dialog):
         box.pack_start(self.lock_all, False, False, 0)
         box.pack_start(self.devtools, False, False, 0)
 
+        # How approved widget commands run (sandbox.py), and the record of approvals.
+        box.pack_start(Gtk.Separator(), False, False, 4)
+        runner_row = Gtk.Box(spacing=10)
+        runner_row.pack_start(Gtk.Label(label="Widget commands run"), False, False, 0)
+        self.runner = Gtk.ComboBoxText()
+        self.runner.append(sandbox.HOST, "With full access to your account")
+        self.runner.append(sandbox.RESTRICTED, "In a restricted sandbox")
+        self._custom_runner = cfg.get("command_runner") if sandbox.mode(cfg.get("command_runner")) in (
+            sandbox.CUSTOM, sandbox.INVALID) else None
+        if self._custom_runner is not None:
+            self.runner.append(sandbox.CUSTOM, "Through the command_runner in config.json")
+        current = sandbox.mode(cfg.get("command_runner"))
+        self.runner.set_active_id(sandbox.CUSTOM if current == sandbox.INVALID else current)
+        runner_row.pack_start(self.runner, True, True, 0)
+        approvals_btn = Gtk.Button(label="Approved commands…")
+        approvals_btn.connect("clicked", lambda _b: ApprovalsDialog(self).run_and_close())
+        runner_row.pack_start(approvals_btn, False, False, 0)
+        box.pack_start(runner_row, False, False, 0)
+        self.runner_hint = label("", max_width_chars=70)
+        self.runner_hint.get_style_context().add_class("dim")
+        box.pack_start(self.runner_hint, False, False, 0)
+        self.runner.connect("changed", self._on_runner_changed)
+        self._on_runner_changed(self.runner)
+
         self.backend.connect("changed", self._on_backend_changed)
         self.backend.set_active_id(cfg["backend"] if self.pages.get_child_by_name(cfg["backend"]) else "auto")
         self.set_default_size(560, -1)
         self.show_all()
         self._on_backend_changed(self.backend)
+
+    def _runner_value(self):
+        choice = self.runner.get_active_id()
+        return self._custom_runner if choice == sandbox.CUSTOM else choice
+
+    def _on_runner_changed(self, _combo):
+        headline, details = sandbox.describe(self._runner_value())
+        text = f"{headline}. {details}"
+        if self.runner.get_active_id() == sandbox.HOST:
+            text += " Widgets you approved for the sandbox will ask again."
+        elif self.runner.get_active_id() == sandbox.RESTRICTED:
+            text += " Needs bubblewrap (bwrap); with the passt package, internet commands are isolated too."
+        self.runner_hint.set_text(text)
 
     def _page(self, name, rows, hint):
         grid = Gtk.Grid(column_spacing=12, row_spacing=10)
@@ -249,8 +297,67 @@ class SettingsDialog(Gtk.Dialog):
     def apply(self, cfg: dict):
         cfg.update(self.values())
         cfg.update({"autostart": self.login.get_active(), "developer_extras": self.devtools.get_active(),
-                    "lock_widgets": self.lock_all.get_active()})
+                    "lock_widgets": self.lock_all.get_active(), "command_runner": self._runner_value()})
         autostart.set_enabled(self.login.get_active(), cfg.get("autostart_command", ""))
+
+
+class ApprovalsDialog(Gtk.Dialog):
+    """Every widget whose commands you approved: when, from where, and how they ran; revoke any."""
+
+    SOURCES = {"generated": "made with AI", "gallery": "from the gallery", "imported": "imported from a file",
+               "edited": "edited", "reviewed": "reviewed", "migrated": "approved in Pickit 1.5.1 or earlier"}
+
+    def __init__(self, parent):
+        super().__init__(title="Approved commands", transient_for=parent, modal=True)
+        self.add_button("Close", Gtk.ResponseType.CLOSE)
+        self.set_default_size(620, 420)
+        box = self.get_content_area()
+        box.set_spacing(10)
+        box.set_border_width(16)
+        intro = label("Widgets run their commands only while you approve them. Revoking stops a widget's "
+                      "commands until you approve them again (right-click the widget → Review commands…).")
+        box.pack_start(intro, False, False, 0)
+        self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        scroller = Gtk.ScrolledWindow(vexpand=True)
+        scroller.add(self.list)
+        box.pack_start(scroller, True, True, 0)
+        self.refresh()
+        self.show_all()
+
+    def refresh(self):
+        for child in self.list.get_children():
+            self.list.remove(child)
+        widgets = {m["id"]: m for m in store.list_widgets()}
+        rows = 0
+        for wid, entry in sorted(approvals.entries().items(), key=lambda kv: kv[1].get("approved_at", "")):
+            m = widgets.get(wid)
+            if m is None or not m.get("commands"):
+                continue
+            current = store.is_approved(m)
+            when = entry.get("approved_at", "")[:16].replace("T", " ") or "before Pickit 1.5.2"
+            ran = "in the sandbox" if entry.get("runner") == sandbox.RESTRICTED else (
+                "with full access" if entry.get("runner", sandbox.HOST) == sandbox.HOST else "with your runner")
+            status = "" if current else " · <b>not in effect</b> (the commands changed, or how commands run)"
+            text = (f"<b>{GLib.markup_escape_text(m['name'])}</b>  "
+                    f"<small>{len(m['commands'])} command{'s' if len(m['commands']) != 1 else ''}</small>\n"
+                    f"<small>{GLib.markup_escape_text(when)} · "
+                    f"{self.SOURCES.get(entry.get('source'), entry.get('source', ''))} · {ran}{status}</small>")
+            row = Gtk.Box(spacing=10, border_width=6)
+            info = label(text)
+            info.set_use_markup(True)
+            row.pack_start(info, True, True, 0)
+            revoke = Gtk.Button(label="Revoke")
+            revoke.connect("clicked", lambda _b, w=wid: (store.revoke(w), self.refresh()))
+            row.pack_start(revoke, False, False, 0)
+            self.list.add(row)
+            rows += 1
+        if not rows:
+            self.list.add(label("No approved commands. Widgets without commands don't need approval."))
+        self.list.show_all()
+
+    def run_and_close(self):
+        self.run()
+        self.destroy()
 
 
 class MakerWindow(Gtk.ApplicationWindow):
@@ -260,6 +367,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.set_default_size(1100, 720)
         self.draft: dict | None = None
         self.draft_approved = False
+        self.draft_source = "generated"  # recorded with the approval (approvals.SOURCES)
         self.editing_id: str | None = None
         self.prompts: list[str] = []
         self.busy = False
@@ -470,6 +578,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.view_stack.set_visible_child_name("preview")
         self.draft, self.draft_approved, self.editing_id, self.prompts = None, False, None, []
         self.undo_stack, self.redo_stack, self.approved_hashes = [], [], set()
+        self.draft_source = "generated"
         self.auto_place = False
         self.prompt.get_buffer().set_text("")
         self._drop_preview()
@@ -489,6 +598,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.editing_id = widget_id
         self.draft = store.to_spec(manifest)
         self.draft_approved = store.is_approved(manifest)
+        self.draft_source = "edited"
         self.undo_stack = [v["spec"] for v in store.versions(widget_id)]
         self.redo_stack, self.approved_hashes = [], set()
         self._note_approved()
@@ -661,9 +771,9 @@ class MakerWindow(Gtk.ApplicationWindow):
         if not self.draft or not self.apply_code():
             return
         manifest = store.save_spec(self.draft, self.editing_id, approved=self.draft_approved,
-                                   prompt=" → ".join(self.prompts) or None)
+                                   prompt=" → ".join(self.prompts) or None, source=self.draft_source)
         if not self.draft_approved:
-            manifest.pop("approved_hash", None)
+            store.revoke(manifest["id"])
         manifest["enabled"] = True
         store.save_manifest(manifest)  # the desktop daemon picks this up
         autostart.ensure_daemon()
@@ -999,6 +1109,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.draft, self.editing_id, self.prompts, self.auto_place = spec, None, [history], False
         self.undo_stack, self.redo_stack, self.approved_hashes = [], [], set()
         self.prompt.get_buffer().set_text("")
+        self.draft_source = "imported" if untrusted else "gallery"
         self.draft_approved = untrusted or not spec["commands"] or approval_dialog(
             self, spec["name"], spec["commands"], note=note)
         self._note_approved()
@@ -1013,7 +1124,7 @@ class MakerWindow(Gtk.ApplicationWindow):
                                                     accept="Approve and add", reject="Cancel"):
             return False
         spec["position"] = store.free_anchor(spec["position"])
-        store.save_spec(spec, approved=True, prompt=f"Gallery: {spec['name']}")
+        store.save_spec(spec, approved=True, prompt=f"Gallery: {spec['name']}", source="gallery")
         autostart.ensure_daemon()
         self.refresh_list()
         self.status.set_text(f"“{spec['name']}” is on your desktop. Alt+drag to move it; right-click for options.")

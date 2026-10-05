@@ -34,6 +34,9 @@ DEFAULTS = {
     "engine": "auto",
     "developer_extras": False,
     "lock_widgets": False,  # no widget can be dragged (each one can also be locked on its own)
+    # How approved widget commands run (sandbox.py): "host" (full access), "restricted" (a
+    # bubblewrap sandbox) or your own wrapper, e.g. ["firejail", "--profile=pickit-widget", "--"].
+    "command_runner": "host",
 }
 
 

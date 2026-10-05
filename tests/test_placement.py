@@ -95,3 +95,15 @@ def test_x11_session_needs_no_probe(monkeypatch):
     monkeypatch.setattr(session, "layer_shell_supported", lambda: pytest.fail("no Wayland to probe"))
     assert session.setup_widget_display() == "x11"
     assert os.environ["GDK_BACKEND"] == "x11"
+
+
+@pytest.mark.parametrize("env, namespace", [
+    ({"XDG_CURRENT_DESKTOP": "KDE", "KDE_SESSION_VERSION": "6"}, "dock"),   # survives Meta+D
+    ({"XDG_CURRENT_DESKTOP": "KDE", "KDE_SESSION_VERSION": "5"}, "pickit-widget"),  # KWin 5 stacks docks on top
+    ({"XDG_CURRENT_DESKTOP": "KDE"}, "pickit-widget"),
+    ({"XDG_CURRENT_DESKTOP": "Hyprland"}, "pickit-widget"),
+    ({}, "pickit-widget"),
+])
+def test_layer_namespace(env, namespace):
+    widget_window = pytest.importorskip("pickit.widget_window")
+    assert widget_window.layer_namespace(env) == namespace

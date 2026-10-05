@@ -56,7 +56,7 @@ WAYLAND_DISPLAY=wayland-1 GDK_BACKEND=wayland python3 tests/wayland_smoke.py
 - Keep pull requests focused, and describe what you tested and on which desktop.
 - UI changes: include a screenshot.
 - Changes to `pickit/prompts/system.md` affect every generated widget. Show a few before-and-after examples.
-- Anything that touches command execution or approval (`bridge.py`, `store.py`'s hashing, `runtime.py`'s host wrappers) needs extra care. See [SECURITY.md](SECURITY.md).
+- Anything that touches command execution or approval (`bridge.py`, `sandbox.py`, `approvals.py`, `risk.py`, `runtime.py`'s host wrappers) needs extra care. See [SECURITY.md](SECURITY.md).
 
 ## Adding a widget to the gallery
 

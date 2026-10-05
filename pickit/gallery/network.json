@@ -6,7 +6,7 @@
  "position": "bottom-right",
  "commands": {
   "n": {
-   "cmd": "i=$(ip route show default 2>/dev/null | awk '{print $5; exit}'); [ -n \"$i\" ] || i=$(awk -F: 'NR>2 {gsub(/ /, \"\", $1); if ($1 != \"lo\") {print $1; exit}}' /proc/net/dev); [ -n \"$i\" ] || exit 0; s=/sys/class/net/$i/statistics; r1=$(cat $s/rx_bytes); t1=$(cat $s/tx_bytes); sleep 1; r2=$(cat $s/rx_bytes); t2=$(cat $s/tx_bytes); echo \"iface=$i\"; echo \"down=$((r2 - r1))\"; echo \"up=$((t2 - t1))\"",
+   "cmd": "i=$(ip route show default 2>/dev/null | awk '{print $5; exit}'); [ -n \"$i\" ] || for d in /sys/class/net/*; do [ -e \"$d/device\" ] && [ \"$(cat \"$d/operstate\" 2>/dev/null)\" = up ] && { i=${d##*/}; break; }; done; [ -n \"$i\" ] || exit 0; s=/sys/class/net/$i/statistics; r1=$(cat $s/rx_bytes); t1=$(cat $s/tx_bytes); sleep 1; r2=$(cat $s/rx_bytes); t2=$(cat $s/tx_bytes); echo \"iface=$i\"; echo \"down=$((r2 - r1))\"; echo \"up=$((t2 - t1))\"",
    "interval": 2.0
   }
  },

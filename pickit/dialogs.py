@@ -18,6 +18,8 @@ CSS = b"""
 .gallery-card { background-color: alpha(@theme_fg_color, 0.045); border-radius: 14px; padding: 12px; }
 .gallery-stage { border-radius: 10px; }
 .warning-note { color: @warning_color; }
+.danger-note { color: @error_color; font-weight: bold; }
+.runner-box { background-color: alpha(@theme_fg_color, 0.06); border-radius: 8px; padding: 8px 10px; }
 .selection-chip { background-color: alpha(#f0a64a, 0.16); border-radius: 8px; padding: 2px 4px 2px 10px; }
 """ % (PREVIEW_BG.encode(), ", ".join(f'"{f}"' if " " in f else f for f in MONO_FONTS.split(",")).encode())
 
@@ -55,21 +57,43 @@ def build_approval_dialog(parent, name: str, commands: dict, note: str | None = 
     ok.get_style_context().add_class("suggested-action")
     dlg.set_default_size(620, -1)
 
+    from . import risk, sandbox
+    runner = sandbox.current()
+    mode = sandbox.mode(runner)
+
     box = dlg.get_content_area()
     box.set_spacing(10)
     box.set_border_width(16)
-    intro = label(f"<b>{GLib.markup_escape_text(name)}</b> wants to run these shell commands "
-                   "as your user. Only approve commands you understand.")
+    intro = label(f"<b>{GLib.markup_escape_text(name)}</b> wants to run these shell commands. "
+                  "Only approve commands you understand.")
     intro.set_use_markup(True)
     box.add(intro)
+    # How they'll run: the most important fact about approving them.
+    headline, details = sandbox.describe(runner)
+    where = label(f"<b>{GLib.markup_escape_text(headline)}</b>\n<small>{GLib.markup_escape_text(details)}</small>")
+    where.set_use_markup(True)
+    where.get_style_context().add_class("runner-box")
+    if mode in (sandbox.HOST, sandbox.INVALID):
+        where.get_style_context().add_class("warning-note")
+    box.add(where)
+    if mode == sandbox.RESTRICTED and any(c.get("network") for c in commands.values()) \
+            and not sandbox.network_isolated():
+        shared = label("Commands that use the internet share your computer's network, which also lets them "
+                       "reach the X server (other windows and the keyboard). Install the passt package to give "
+                       "them a network of their own.")
+        shared.get_style_context().add_class("warning-note")
+        box.add(shared)
     if note:
         warn = label(note)
         warn.get_style_context().add_class("warning-note")
         box.add(warn)
 
     grid = Gtk.Grid(column_spacing=12, row_spacing=8)
-    for row, (key, c) in enumerate(commands.items()):
+    row = 0
+    for key, c in commands.items():
         every = f"every {c['interval']:g}s" if c["interval"] > 0 else "on load / on demand"
+        if mode == sandbox.RESTRICTED:
+            every += " · internet" if c.get("network") else " · no internet"
         head = label(f"<b>{GLib.markup_escape_text(key)}</b>\n<small>{every}</small>")
         head.set_use_markup(True)
         head.set_valign(Gtk.Align.START)
@@ -78,6 +102,17 @@ def build_approval_dialog(parent, name: str, commands: dict, note: str | None = 
         cmd.set_hexpand(True)
         grid.attach(head, 0, row, 1, 1)
         grid.attach(cmd, 1, row, 1, 1)
+        row += 1
+        for text in risk.warnings(c["cmd"]):
+            danger = label(f"⚠ {text}")
+            danger.get_style_context().add_class("danger-note")
+            grid.attach(danger, 1, row, 1, 1)
+            row += 1
+        for text in risk.notes(c["cmd"], bool(c.get("network"))) if mode == sandbox.RESTRICTED else ():
+            info = label(text)
+            info.get_style_context().add_class("warning-note")
+            grid.attach(info, 1, row, 1, 1)
+            row += 1
     scroller = Gtk.ScrolledWindow(propagate_natural_height=True, max_content_height=420)
     scroller.add(grid)
     box.add(scroller)

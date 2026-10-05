@@ -158,10 +158,9 @@ class DesktopDaemon(Gtk.Application):
         manifest = store.load(wid)
         parent = dialog_parent(self.windows.get(wid))
         if approval_dialog(parent, manifest["name"], manifest.get("commands", {})):
-            manifest["approved_hash"] = store.commands_hash(manifest["commands"])
+            store.approve(manifest, "reviewed")
         else:
-            manifest.pop("approved_hash", None)
-        store.save_manifest(manifest)
+            store.revoke(wid)
 
     def _delete(self, wid):
         manifest = store.load(wid)

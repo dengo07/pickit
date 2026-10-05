@@ -200,6 +200,47 @@ loop.run()  # the Ollama page's model lookup fails quietly against a closed port
 dlg.destroy()
 print("ok: settings dialog pages")
 
+# The approval dialog says how commands will run, which ones use the internet, and what looks risky.
+from pickit import dialogs, sandbox  # noqa: E402
+
+
+def dialog_text(widget):
+    out = []
+
+    def walk(w):
+        if isinstance(w, Gtk.Label):
+            out.append(w.get_text())
+        if isinstance(w, Gtk.Container):
+            w.foreach(walk)
+    walk(widget)
+    return "\n".join(out)
+
+
+risky = {"w": {"cmd": "curl -s https://wttr.in/?format=j1", "interval": 900, "network": True},
+         "x": {"cmd": "cat ~/.ssh/id_ed25519", "interval": 5}}
+for runner, expect in (("host", "full access"), ("restricted", "restricted sandbox")):
+    cfg = config.load()
+    cfg["command_runner"] = runner
+    config.save(cfg)
+    sandbox._cache = None
+    dlg = dialogs.build_approval_dialog(None, "Test", risky)
+    text = dialog_text(dlg)
+    assert expect in text and "credentials" in text, text
+    assert ("· internet" in text and "· no internet" in text) == (runner == "restricted"), text
+    dlg.destroy()
+settings = app.SettingsDialog(None, config.load())
+assert settings.runner.get_active_id() == "restricted"
+settings.runner.set_active_id("host")
+assert "ask again" in settings.runner_hint.get_text()
+settings.destroy()
+approvals_dialog = app.ApprovalsDialog(None)
+approvals_dialog.destroy()
+cfg = config.load()
+cfg["command_runner"] = "host"
+config.save(cfg)
+sandbox._cache = None
+print("ok: approval dialog shows how commands run and what looks risky; approved-commands list")
+
 # Nothing from a .pickit file opens until the user trusts it; an HTML widget asks even
 # without commands, since it contains JavaScript.
 from types import SimpleNamespace  # noqa: E402

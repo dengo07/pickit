@@ -39,16 +39,18 @@ In **Auto** mode, the AI uses native whenever the design fits and HTML otherwise
   "click_through": false,            // optional: clicks go to whatever is underneath
   "commands": {
     "cpu":  { "cmd": "awk '{print $1}' /proc/loadavg", "interval": 2 },
+    "w":    { "cmd": "curl -s 'https://wttr.in/?format=j1'", "interval": 900, "network": true },
     "play": { "cmd": "busctl --user call …",            "interval": 0 }
   },
-  "approved_hash": "…",              // written when you approve the commands
   "history": ["a CPU meter", "make it blue"]
 }
 ```
 
 - `position` is one of `top-left`, `top-center`, `top-right`, `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`. It's used until the widget is moved.
 - `interval` is in seconds (minimum 1). `0` marks an **action** (play/pause, next track...). It never runs by itself, only when a button (native) or `widget.run()` (html) triggers it. For data that only needs loading once, use a long interval such as `86400`.
-- Commands run through `bash -c` as your user, in your home directory, with a 20-second timeout and 256 KB of captured output.
+- `"network": true` marks a command that uses the internet. In the restricted command runner, only marked commands can reach the network; with full access it changes nothing. Mark every command that uses the internet, and only those.
+- Commands run through `bash -c`, with a 20-second timeout and 256 KB of captured output: as your user in your home directory (the default), or in a restricted sandbox without your home folder and desktop session (Settings; see [SECURITY.md](../SECURITY.md)).
+- Approvals aren't stored in the widget. Pickit keeps them in `~/.config/pickit/approvals.json`, so a widget folder that's copied or edited never arrives approved.
 - Periodic commands (`interval` > 0) also re-run right away when something relevant happens: power plugged or unplugged, or battery level changes (commands with an interval of 5 minutes or less), and waking from sleep or network changes (all periodic commands).
 - Widgets heal themselves. If an html widget's page crashes, or stops responding for about a minute, Pickit restarts it. Native widgets have no separate page process that could crash.
 

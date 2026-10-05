@@ -5,6 +5,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-05
+
+Hardening of how widget commands are approved and run, after a second report from the same security researcher. Nothing here was an exploitable flaw; it adds defense in depth around the most powerful thing a widget can do.
+
+### Security
+- **Approvals are no longer stored in the widget.** Pickit 1.5.1 and earlier kept the approval as a hash inside the widget's own `widget.json`, so any program that could write that file could also mark its commands as approved. Approvals now live in Pickit's own record, `~/.config/pickit/approvals.json`, with the exact command set, when, from which version, where the widget came from and how commands ran. Copying or editing a widget folder never carries an approval. Your existing approvals were moved there automatically; after that, a hash in a widget file is ignored.
+- **Approved commands can run in a restricted sandbox.** In **Settings → Widget commands run**, choose *In a restricted sandbox*: commands then run in bubblewrap, without your home folder, other programs' sockets (D-Bus, X11, Wayland, Docker, SSH agent) or the real `/tmp`, and only commands marked as using the internet can reach the network. With the `passt` package installed, those get a network of their own too. Or set `"command_runner"` in `config.json` to your own wrapper, such as Firejail. Every runner fails closed: if it's missing or misconfigured, commands don't run rather than falling back to full access. Approvals given for the sandbox don't carry over to full access; switching asks again.
+- **The approval dialog says how commands will run**, which ones use the internet, and warns about risky patterns: administrator rights, downloading and running code, touching credentials or browser data, autostart entries, changing Pickit's own files, or sending data to a server.
+
+### Added
+- **Settings → Approved commands** lists every widget whose commands you approved, when and from where, and revokes any of them.
+- Commands that use the internet can say so with `"network": true`. The AI, the gallery's Weather widget and the examples now do.
+
+### Changed
+- The gallery's Network widget finds the network interface through `/sys`, so it also works in the restricted sandbox.
+
+### Fixed
+- On KDE Plasma 6 (Wayland), Show Desktop (Meta+D) no longer hides the widgets along with your windows. KWin treated them as normal windows; they now identify as part of the desktop, like Plasma's panels, and still stay below every window. Plasma 5 keeps the old behavior, because KWin 5 would put them above your windows instead.
+
 ## [1.5.1] - 2026-09-30
 
 A security release. Please update, especially if you open `.pickit` files from other people. Thanks to the researcher(silverfox-2096) who reported these issues privately.
@@ -149,7 +168,8 @@ A security release. Please update, especially if you open `.pickit` files from o
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/dengo07/pickit/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/dengo07/pickit/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/dengo07/pickit/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/dengo07/pickit/compare/v1.3.0...v1.4.0

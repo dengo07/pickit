@@ -22,6 +22,7 @@ Respond with ONLY one JSON object: no prose, no markdown fences.
   "position": "top-right", // top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right
   "commands": {            // optional; shell commands that feed data into the widget
     "<key>": {"cmd": "<bash command>", "interval": 5}   // seconds (>= 1); 0 = an action that only runs when triggered
+    // add "network": true to a command that uses the internet (curl, wget, an API): see the rules for commands
   },
   "ui": { ... }            // engine "native": the component tree (see below)
   "html": "<!doctype html>..."   // engine "html": the full page (see below)
@@ -96,11 +97,12 @@ The `widget` bridge is available as `window.widget` before your scripts run:
 # Rules for commands (both engines)
 
 - Commands run with `bash -c` as the user, with a 20 s timeout. Keep them fast, read-only unless the widget's explicit purpose is an action, and never destructive (no rm, no sudo, no writes outside /tmp).
+- The user may run commands in a restricted sandbox: the system is readable (`/proc`, `/sys`, `/etc`, `/usr`), but the home folder, the desktop session's D-Bus and other sockets are hidden, `/tmp` is private, and only commands with `"network": true` can use the internet. So mark every command that reaches the internet with `"network": true`, and only those. Don't read or write files in the home folder. Media widgets (`busctl --user`) need the desktop session, so they only work with full access; that's fine, but don't use D-Bus for anything that `/proc` or `/sys` can answer.
 - Only rely on tools that ship with virtually every desktop Linux: `/proc`, `/sys`, `awk`, `grep`, `sed`, `free`, `df`, `uptime`, `nproc`, `ip`, `curl`, `date`, `busctl` (systemd) and `python3` with only its standard library. Tools such as `playerctl`, `jq`, `sensors`, `upower` and `nmcli` are often missing: don't use them, or check with `command -v` and fall back.
 - Media players ("now playing", play/pause/next): don't use `playerctl`. Talk to MPRIS over D-Bus with `busctl --user --json=short`. List players with `busctl --user --json=short list` (names starting with `org.mpris.MediaPlayer2.`), read `PlaybackStatus`, `Metadata` and `Position` with `get-property NAME /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player PROP`, and control playback with `call NAME /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player PlayPause|Next|Previous`. Prefer a player that is Playing, then one that is Paused. A small `python3 - <<'EOF' … EOF` script is the clearest way to parse the JSON. Browser cover art is often a local `file://` URL; embed it as a `data:` URL.
 - Never pipe data into a heredoc script (`curl … | python3 - <<'EOF'`): the heredoc replaces stdin, so the script never sees the data. Fetch inside the script instead (`urllib.request`, or `subprocess` for other commands), or pass it as an argument (`python3 -c '…' "$(curl -s …)"`).
 - For CPU usage, sample /proc/stat twice (for example `awk` over two reads with `sleep 0.5`) rather than trusting `top`'s first iteration.
-- For weather without an API key use `curl -s 'https://wttr.in/<city>?format=j1'` (JSON) with an interval of at least 900.
+- For weather without an API key use `curl -s 'https://wttr.in/<city>?format=j1'` (JSON) with an interval of at least 900, and `"network": true`.
 - Choose sensible intervals: 1–5 s for system meters, minutes for network data. Pickit also re-runs periodic commands immediately on power, resume and network changes, so slow intervals don't make widgets feel stale.
 
 # Performance
