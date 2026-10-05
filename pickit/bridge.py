@@ -6,9 +6,9 @@ from pathlib import Path
 
 from gi.repository import GLib
 
-from . import runtime
+from . import runtime, sandbox
 
-COMMAND_TIMEOUT = 20
+COMMAND_TIMEOUT = sandbox.TIMEOUT
 MAX_OUTPUT = 256 * 1024
 
 BRIDGE_JS = r"""
@@ -83,16 +83,20 @@ class CommandRunner:
         threading.Thread(target=self._exec, args=(key,), daemon=True).start()
 
     def _exec(self, key):
-        cmd = self.commands[key]["cmd"]
-        # `timeout` runs on the host side too, so a hung command is killed even when it
-        # was started through flatpak-spawn.
-        argv = runtime.host_argv(["timeout", "-k", "2", str(COMMAND_TIMEOUT), "bash", "-c", cmd])
+        command = self.commands[key]
+        # Through the configured runner (full access, restricted sandbox or your own wrapper).
+        # `timeout` runs on the host side too, so a hung command is killed even when it was
+        # started through flatpak-spawn.
+        argv = runtime.host_argv(sandbox.argv(command["cmd"], bool(command.get("network")),
+                                              sandbox.current()))
         try:
             p = subprocess.run(argv, capture_output=True, text=True, errors="replace",
                                timeout=COMMAND_TIMEOUT + 5, cwd=str(Path.home()),
                                env=runtime.host_env(), stdin=subprocess.DEVNULL)
             result = {"out": p.stdout[:MAX_OUTPUT].strip(), "err": p.stderr[:4096].strip(),
                       "code": p.returncode}
+            if p.returncode == sandbox.FAILED and result["err"].startswith("pickit:"):
+                print(result["err"].splitlines()[0], flush=True)  # the runner refused: in daemon.log
         except subprocess.TimeoutExpired:
             result = {"out": "", "err": f"timed out after {COMMAND_TIMEOUT}s", "code": -1}
         except OSError as e:

@@ -29,7 +29,7 @@ Pickit uses an AI model to turn your description into a working widget, then pin
 - **Share widgets.** Export any widget as a `.pickit` file; others open it with a double-click and approve its commands before anything runs.
 - **Part of the desktop.** Widgets sit above the wallpaper and below every window. Show Desktop doesn't hide them, they appear on every workspace, and they stay out of the taskbar and Alt+Tab.
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.
-- **Live data, with approval.** Widgets get data from shell commands that **you approve before they run**. Change a command and Pickit asks again.
+- **Live data, with approval.** Widgets get data from shell commands that **you approve before they run**. Change a command and Pickit asks again. The approval dialog points out risky commands, and **Settings** can run every command in a restricted sandbox, away from your files.
 - **No setup.** Download a Flatpak or AppImage; there are no libraries to install.
 - **Your choice of AI.** Your [Claude Code](https://claude.com/claude-code) login, an Anthropic API key, a local model with [Ollama](https://ollama.com) (free, and nothing leaves your computer), or any model on [OpenRouter](https://openrouter.ai).
 - **Light on memory.** Most widgets are drawn natively with GTK: five typical widgets use about 25 MB in total. When a design needs more freedom (animation, SVG art), Pickit switches to HTML/CSS for that widget.

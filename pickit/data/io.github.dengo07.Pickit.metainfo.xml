@@ -60,6 +60,17 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.5.2" date="2026-10-05">
+      <description>
+        <p>Safer widget commands.</p>
+        <ul>
+          <li>Approvals are kept apart from the widgets, so a widget file can't approve itself</li>
+          <li>Optionally run every widget command in a restricted sandbox, away from your files</li>
+          <li>The approval dialog warns about risky commands, and Settings lists and revokes approvals</li>
+          <li>On KDE Plasma 6, Show Desktop no longer hides the widgets</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.5.1" date="2026-09-29" urgency="high">
       <description>
         <p>A security release. Please update, especially if you open widget files from other people.</p>

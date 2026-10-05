@@ -74,6 +74,11 @@ def validate(spec: dict, engine: str = "auto") -> dict:
         if 0 < interval < 1:
             interval = 1
         clean[str(key)] = {"cmd": c["cmd"], "interval": interval}
+        network = c.get("network", False)
+        if not isinstance(network, bool):
+            raise SpecError(f"Command `{key}`: `network` must be true or false.")
+        if network:  # only when set, so the approval of existing commands stays valid
+            clean[str(key)]["network"] = True
     result = {
         "name": str(spec.get("name") or "Widget")[:60],
         "engine": kind,

@@ -8,6 +8,8 @@ The window itself is either a Wayland layer-shell surface or an X11 window with 
 see session.py for which one and why.
 """
 
+import os
+
 import cairo
 import gi
 
@@ -35,6 +37,17 @@ def layer_shell() -> bool:
         _layer_shell = bool(GtkLayerShell and display and "Wayland" in type(display).__name__
                             and hasattr(GtkLayerShell, "is_supported") and GtkLayerShell.is_supported())
     return _layer_shell
+
+
+def layer_namespace(env=os.environ) -> str:
+    """The layer-shell namespace for widget surfaces. KWin (KDE Plasma) turns it into a window
+    type, and Show Desktop (Meta+D) hides every unknown one like a normal window. "dock" keeps
+    widgets on the desktop, like Plasma's panels. Only from Plasma 6: KWin 5 also stacks dock
+    layer surfaces above every window, whatever their layer. Elsewhere the namespace is just a
+    name that users can match in compositor rules (Hyprland's layerrule, for example)."""
+    plasma = "KDE" in env.get("XDG_CURRENT_DESKTOP", "").upper().split(":")
+    version = env.get("KDE_SESSION_VERSION", "")
+    return "dock" if plasma and version.isdigit() and int(version) >= 6 else "pickit-widget"
 
 
 def dialog_parent(window):
@@ -131,7 +144,7 @@ class WidgetWindow(Gtk.Window):
             # A layer-shell surface in the "bottom" layer: above the wallpaper, below every
             # window, on every workspace, and never in a taskbar, dock or Alt+Tab.
             GtkLayerShell.init_for_window(self)
-            GtkLayerShell.set_namespace(self, "pickit-widget")
+            GtkLayerShell.set_namespace(self, layer_namespace())
             GtkLayerShell.set_layer(self, GtkLayerShell.Layer.BOTTOM)
             GtkLayerShell.set_keyboard_mode(self, GtkLayerShell.KeyboardMode.NONE)
         else:

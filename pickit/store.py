@@ -8,7 +8,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from . import runtime
+from . import approvals, runtime
 
 DATA_DIR = runtime.DATA_HOME / "pickit"
 WIDGETS_DIR = DATA_DIR / "widgets"
@@ -29,8 +29,10 @@ LIVE_FIELDS = ("x", "y", "locked", "click_through")
 
 
 def signature(manifest: dict) -> str:
-    """Identifies a widget's content; ignores LIVE_FIELDS so a drag or a lock doesn't reload it."""
+    """Identifies a widget's content; ignores LIVE_FIELDS so a drag or a lock doesn't reload it.
+    Includes whether its commands are approved, which lives outside the widget's files."""
     rest = {k: v for k, v in manifest.items() if k not in LIVE_FIELDS}
+    rest["approved"] = is_approved(manifest)
     h = hashlib.sha256(json.dumps(rest, sort_keys=True).encode())
     for path in (html_path(manifest["id"]), ui_path(manifest["id"])):
         try:
@@ -40,15 +42,41 @@ def signature(manifest: dict) -> str:
     return h.hexdigest()
 
 
-def commands_hash(commands: dict) -> str:
-    canonical = json.dumps(commands or {}, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()
+commands_hash = approvals.commands_hash
+_migration_checked = False
+
+
+def _migrate_approvals() -> None:
+    """Once per install: approvals from widget.json (1.5.1 and earlier) move to approvals.py's
+    record, and the old field is removed. After that, widget files can't approve themselves."""
+    global _migration_checked
+    if _migration_checked:
+        return
+    _migration_checked = True
+    if approvals.migrated():
+        return
+    manifests = list_widgets()
+    approvals.migrate(manifests)
+    for m in manifests:
+        if m.pop("approved_hash", None) is not None:
+            save_manifest(m, notify=False)
 
 
 def is_approved(manifest: dict) -> bool:
-    if not manifest.get("commands"):
-        return True
-    return manifest.get("approved_hash") == commands_hash(manifest["commands"])
+    """Whether the user approved exactly this widget's current commands. Never decided by the
+    widget file itself."""
+    _migrate_approvals()
+    return approvals.is_approved(manifest["id"], manifest.get("commands") or {})
+
+
+def approve(manifest: dict, source: str = "reviewed") -> None:
+    approvals.approve(manifest["id"], manifest.get("name", manifest["id"]), manifest.get("commands") or {}, source)
+    notify_changed()  # approvals live outside the widget folder, so tell the daemon
+
+
+def revoke(widget_id: str) -> None:
+    approvals.revoke(widget_id)
+    notify_changed()
 
 
 def widget_dir(widget_id: str) -> Path:
@@ -104,9 +132,10 @@ def save_manifest(manifest: dict, notify: bool = True) -> None:
 
 
 def save_spec(spec: dict, widget_id: str | None = None, approved: bool = False,
-              prompt: str | None = None) -> dict:
+              prompt: str | None = None, source: str = "generated") -> dict:
     """Create or update a widget from a generated spec. Returns the manifest.
-    Updating keeps the previous version (see versions())."""
+    Updating keeps the previous version (see versions()). `approved` records the user's
+    approval of its commands; `source` says where the widget came from (approvals.SOURCES)."""
     if widget_id:
         manifest = load(widget_id)
         previous = to_spec(manifest)
@@ -123,8 +152,9 @@ def save_spec(spec: dict, widget_id: str | None = None, approved: bool = False,
         "position": spec.get("position", "top-right"),
         "commands": spec.get("commands", {}),
     })
+    manifest.pop("approved_hash", None)  # never trusted from the file (see is_approved)
     if approved:
-        manifest["approved_hash"] = commands_hash(manifest["commands"])
+        approvals.approve(manifest["id"], manifest["name"], manifest["commands"], source)
     if prompt:
         manifest.setdefault("history", []).append(prompt)
     d = widget_dir(manifest["id"])
@@ -203,6 +233,7 @@ def versions(widget_id: str) -> list[dict]:
 
 def delete(widget_id: str) -> None:
     shutil.rmtree(widget_dir(widget_id), ignore_errors=True)
+    approvals.revoke(widget_id)
     notify_changed()
 
 
