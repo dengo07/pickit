@@ -55,11 +55,11 @@ def main() -> int:
         if args[0] == "run":
             from . import session
             session.setup_widget_display()  # Wayland layer-shell if the compositor has it, else X11
-        from .daemon import DesktopDaemon, acquire_instance_lock, is_running
+        from .daemon import DesktopDaemon, acquire_instance_lock, is_running, replace_older_daemon
         if args[0] == "stop" and not is_running():
             print("The desktop daemon is not running.")
             return 0
-        if args[0] == "run" and not acquire_instance_lock():
+        if args[0] == "run" and not acquire_instance_lock() and not replace_older_daemon():
             print("pickit: a widget daemon is already running")
             return 0
         return DesktopDaemon().run(sys.argv)

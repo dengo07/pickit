@@ -23,7 +23,7 @@ gi.require_version("Soup", "3.0")
 from gi.repository import Gdk, Gio, GLib, Soup, WebKit2  # noqa: E402
 
 from . import theme as themes  # noqa: E402
-from .bridge import BRIDGE_JS, CommandRunner  # noqa: E402
+from .bridge import BRIDGE_JS, CommandRunner, parse_expand_message  # noqa: E402
 
 SCHEME = "pickit-widget"
 # The CDNs the AI instructions allow (prompts/system.md) may serve scripts, styles and fonts.
@@ -205,6 +205,8 @@ class WidgetView(WebKit2.WebView):
         self._watchdog = 0
         self._crashes: list[float] = []
         self.on_drag = None  # callable(button) set by the hosting window
+        self.on_expand = None  # callable(action) set by the hosting window; None = can't expand
+        self._expanded = False  # what the page was last told
         self._on_select = None  # "Select part" callback in the maker preview
 
     def load_widget(self, html: str, commands: dict, run_commands: bool, host: str | None = None):
@@ -254,12 +256,23 @@ class WidgetView(WebKit2.WebView):
             return
         self._loaded = True
         self._send_theme()
+        self._send_expanded()  # the page restores the saved state
         if self._on_select:
             self._js(f"{SELECT_JS}.on()")
         if self._run_commands:
             self._stop_runner()
             self.runner = CommandRunner(self._commands, self._deliver)
             self.runner.start()
+
+    def set_expanded_state(self, on: bool):
+        """Tell the page whether the window is expanded (it can only ask; the window decides)."""
+        self._expanded = bool(on)
+        if self._loaded:
+            self._send_expanded()
+
+    def _send_expanded(self):
+        # Only a bool is ever formatted into the script.
+        self._js(f"window.widget && window.widget._expanded({'true' if self._expanded else 'false'})")
 
     def _on_decide_policy(self, _view, decision, kind):
         """The page may reload itself (or follow #links), but never leave: no navigating
@@ -351,10 +364,20 @@ class WidgetView(WebKit2.WebView):
             msg = json.loads(value.to_string())
         except (json.JSONDecodeError, TypeError):
             return
+        if not isinstance(msg, dict):
+            return
+        action = parse_expand_message(msg)
+        if action is not None:
+            # Not in select mode (clicks there pick parts), and only for widgets that declared a size.
+            if self.on_expand and not self._on_select:
+                self.on_expand(action)
+            return
         if msg.get("type") == "run" and self.runner:
             self.runner.run(str(msg.get("key")))
         elif msg.get("type") == "drag" and self.on_drag:
-            self.on_drag(int(msg.get("button", 0)) + 1)
+            button = msg.get("button", 0)
+            if type(button) is int and 0 <= button <= 31:  # a page can send anything
+                self.on_drag(button + 1)
         elif msg.get("type") == "select" and self._on_select:  # only while the maker asked for it
             self._on_select({k: str(msg.get(k, ""))[:2000] for k in ("selector", "tag", "html", "text")})
 

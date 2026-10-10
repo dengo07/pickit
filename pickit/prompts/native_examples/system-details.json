@@ -1,0 +1,44 @@
+{
+ "name": "System details",
+ "engine": "native",
+ "width": 300,
+ "height": 84,
+ "expandable": {"width": 300, "height": 230},
+ "position": "top-right",
+ "commands": {
+  "cpu": {"cmd": "top -bn1 | awk '/Cpu\\(s\\)/ {print 100-$8}'", "interval": 3},
+  "mem": {"cmd": "free | awk '/Mem:/ {printf \"%.0f\", $3/$2*100}'", "interval": 5},
+  "disk": {"cmd": "df --output=pcent / | tail -1 | tr -d ' %'", "interval": 60},
+  "up": {"cmd": "uptime -p", "interval": 60}
+ },
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "expander",
+    "animation": "slide",
+    "trigger": "header",
+    "header": [
+     {
+      "type": "row",
+      "spacing": 10,
+      "children": [
+       {"type": "label", "text": "System", "size": 13, "weight": "semibold", "color": "{theme.text}"},
+       {"type": "spacer"},
+       {"type": "label", "text": "CPU {cpu|round:0|default:--}%", "size": 12, "color": "{theme.muted}"}
+      ]
+     },
+     {"type": "progress", "value": "{cpu}", "color": "#4ade80", "thickness": 6}
+    ],
+    "children": [
+     {"type": "label", "text": "Memory {mem|round:0|default:--}%", "size": 12, "color": "{theme.text}"},
+     {"type": "progress", "value": "{mem}", "color": "#60a5fa", "thickness": 6},
+     {"type": "label", "text": "Disk {disk|default:--}%", "size": 12, "color": "{theme.text}"},
+     {"type": "progress", "value": "{disk}", "color": "#f59e0b", "thickness": 6},
+     {"type": "sparkline", "value": "{cpu}", "points": 40, "color": "#4ade80", "min": 0, "max": 100},
+     {"type": "label", "text": "{up|default:}", "size": 11, "color": "{theme.muted}"}
+    ]
+   }
+  ]
+ }
+}

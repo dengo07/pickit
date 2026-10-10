@@ -5,6 +5,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-10-10
+
+### Added
+- **Expandable widgets**, in both engines. A widget can declare `"expandable": {"width", "height"}`, the size it grows to when expanded; its normal `width`/`height` stay the collapsed size.
+  - **Native:** a new `expander` component (a header that stays visible plus a body that slides open) and a `toggle` option on `button`. Clicking the header or a toggle button expands the widget; dragging still moves it.
+  - **HTML:** pages get `widget.expand()`, `widget.collapse()` and `widget.toggle()`, a `widget.expanded` flag, a `pickit-expand` event and a `data-pickit-expanded` attribute on the page. Pages can only ask for one of those three actions, never for a size.
+  - Two native examples: a clock with an agenda and a system details widget.
+  - The AI knows how to build expandable widgets when you ask for one.
+  - The maker's preview has an **Expanded** switch for expandable native widgets. HTML previews have no switch; test those from the placed widget, where the page's own buttons work.
+  - Whether a widget is open is remembered across restarts, but it is never exported, so an imported widget always starts collapsed.
+
+### Security
+- Expanded sizes are validated everywhere a widget comes in (generator, import, gallery, saving) and limited to 80–1600 × 40–1200, then clamped to the monitor's usable area. Expand requests from a page are limited to about one per 220 ms and are handled by that widget's own window only. The Content Security Policy, command approval and sandbox are unchanged.
+
+### Fixed
+- **After updating to 1.5.2, widgets showed no data until you logged out.** The widget daemon started at login kept running the previous version's code, which looked for approvals where 1.5.2 no longer keeps them, so it ran no commands. Now the daemon records its version, and opening a newer Pickit replaces a daemon from an older version right away, starting with this update.
+
 ## [1.5.2] - 2026-10-05
 
 Hardening of how widget commands are approved and run, after a second report from the same security researcher. Nothing here was an exploitable flaw; it adds defense in depth around the most powerful thing a widget can do.
@@ -168,7 +185,8 @@ A security release. Please update, especially if you open `.pickit` files from o
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.3...HEAD
+[1.5.3]: https://github.com/dengo07/pickit/compare/v1.5.2...v1.5.3
 [1.5.2]: https://github.com/dengo07/pickit/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/dengo07/pickit/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/dengo07/pickit/compare/v1.4.0...v1.5.0

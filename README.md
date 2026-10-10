@@ -35,6 +35,7 @@ Pickit uses an AI model to turn your description into a working widget, then pin
 - **A gallery of ready-made widgets.** Thirteen widgets you can add in one click, no AI needed: clocks, a calendar, system gauges and graphs, network speed, CPU temperature, weather and now playing.
 - **Change any part.** Press **Select part**, click a piece of the widget and say what to change about it, or open the **Code** tab and edit the widget directly.
 - **One theme for all widgets.** Pick a preset or your own colors, corner radius and font, in dark, light or following the desktop, and every widget restyles at once. The **inspector** changes a part's colors, sizes and text by hand, no AI needed.
+- **Widgets that open up.** Ask for an expandable widget, such as a clock that opens to show your agenda: click it to show more, click again to fold it away.
 - **Share widgets.** Export any widget as a `.pickit` file; others open it with a double-click and approve its commands before anything runs.
 - **Part of the desktop.** Widgets sit above the wallpaper and below every window. Show Desktop doesn't hide them, they appear on every workspace, and they stay out of the taskbar and Alt+Tab.
 - **Always on.** Widgets keep running after you close Pickit and come back after a reboot.

@@ -5,13 +5,15 @@ and by the maker app, and keeps running with or without the maker window. It
 watches the widget store and reconciles its windows whenever anything changes.
 """
 
+import sys
+
 import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import autostart, config, runtime, store, theme  # noqa: E402
+from . import __version__, autostart, config, runtime, store, theme  # noqa: E402
 from .dialogs import approval_dialog, confirm, export_dialog, install_css  # noqa: E402
 from .events import SystemEvents  # noqa: E402
 from .widget_window import WidgetWindow, dialog_parent, layer_shell  # noqa: E402
@@ -32,14 +34,57 @@ def acquire_instance_lock() -> bool:
     if _lock_file is not None:
         return True
     store.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    lock = open(store.DATA_DIR / "daemon.lock", "w")
+    # Not "w": that would empty the running daemon's version before we know it's running.
+    lock = open(store.DATA_DIR / "daemon.lock", "a+")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         lock.close()
         return False
+    lock.truncate(0)
+    lock.write(__version__)  # for running_version(): an update replaces an older daemon
+    lock.flush()
     _lock_file = lock  # keep the file open (and locked) for the life of the process
     return True
+
+
+def running_version() -> str:
+    """The version of the widget daemon that holds the lock ("" if it's from before 1.5.3,
+    which didn't record it)."""
+    try:
+        return (store.DATA_DIR / "daemon.lock").read_text().strip()
+    except OSError:
+        return ""
+
+
+def is_older(version: str, than: str) -> bool:
+    """Whether `version` ("1.5.2"; "" for daemons before 1.5.3) is older than `than`."""
+    def parts(v):
+        return tuple(int(x) if x.isdigit() else 0 for x in v.split(".")) if v else ()
+    return parts(version) < parts(than)
+
+
+def replace_older_daemon() -> bool:
+    """A daemon from another version still runs, typically the one started at login before
+    Pickit was updated: it would keep running old code (1.5.2 moved approvals, so a 1.5.1
+    daemon ran no commands at all). Stop it and take over. True if the lock is now ours."""
+    import subprocess
+    import time
+    old = running_version()
+    if not is_older(old, __version__):
+        return False  # the same version, or a newer one (e.g. an older AppImage next to the Flatpak)
+    print(f"pickit: replacing the widget daemon from Pickit {old or 'an earlier version'}", flush=True)
+    try:  # `pickit stop`, answered by the running daemon whatever its version
+        subprocess.run([sys.executable, "-m", "pickit", "stop"], timeout=15,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    for _ in range(100):  # until it has exited and released the lock
+        if acquire_instance_lock():
+            return True
+        time.sleep(0.1)
+    print("pickit: the old widget daemon didn't stop", flush=True)
+    return False
 
 
 def is_running() -> bool:

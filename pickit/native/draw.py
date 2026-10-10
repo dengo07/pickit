@@ -29,6 +29,21 @@ def rounded_rect(cr, x, y, w, h, r):
     cr.close_path()
 
 
+def chevron(cr, w, h, up, color, line_width=2.0):
+    """A small ▾ (▴ when `up`) drawn as a path, so no glyph or font is involved."""
+    cx, cy = w / 2, h / 2
+    dx, dy = min(w, h) * 0.28, min(w, h) * 0.14
+    dy = -dy if up else dy
+    cr.set_line_width(line_width)
+    cr.set_line_cap(1)  # cairo.LINE_CAP_ROUND
+    cr.set_line_join(1)  # cairo.LINE_JOIN_ROUND
+    cr.set_source_rgba(*color)
+    cr.move_to(cx - dx, cy - dy)
+    cr.line_to(cx, cy + dy)
+    cr.line_to(cx + dx, cy - dy)
+    cr.stroke()
+
+
 def fraction(value, maximum) -> float:
     if value is None or not maximum:
         return 0.0

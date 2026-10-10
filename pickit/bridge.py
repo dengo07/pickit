@@ -4,7 +4,10 @@ import subprocess
 import threading
 from pathlib import Path
 
-from gi.repository import GLib
+try:
+    from gi.repository import GLib
+except ImportError:  # BRIDGE_JS and the expand helpers are pure; only CommandRunner needs GLib
+    GLib = None
 
 from . import runtime, sandbox
 
@@ -22,8 +25,19 @@ BRIDGE_JS = r"""
     },
     run(key) { post({type: "run", key}); },
     drag(ev) { post({type: "drag", button: ev ? ev.button : 0}); },
+    // Ask the host to expand or collapse the window. The page never says a size: the host
+    // uses the manifest's `expandable` size and ignores the request if there is none.
+    expand() { post({type: "expand", action: "expand"}); },
+    collapse() { post({type: "expand", action: "collapse"}); },
+    toggle() { post({type: "expand", action: "toggle"}); },
+    expanded: false,
     theme: {},   // the widget theme's colors, radius and font; also CSS variables --pickit-*
     _theme(t) { this.theme = t; window.dispatchEvent(new CustomEvent("pickit-theme", {detail: t})); },
+    _expanded(on) {
+      this.expanded = on === true;
+      document.documentElement.dataset.pickitExpanded = this.expanded ? "true" : "false";
+      window.dispatchEvent(new CustomEvent("pickit-expand", {detail: {expanded: this.expanded}}));
+    },
     _deliver(key, res) {
       last[key] = res;
       for (const fn of handlers[key] || []) { try { fn(res.out, res); } catch (e) { console.error(e); } }
@@ -34,6 +48,41 @@ BRIDGE_JS = r"""
   });
 })();
 """
+
+
+EXPAND_MS = 220  # animation length, and the shortest time between two accepted requests
+EXPAND_ACTIONS = ("expand", "collapse", "toggle")
+
+
+def parse_expand_message(msg) -> str | None:
+    """The action of an untrusted {"type": "expand", "action": ...} message, or None.
+    Only the three literal words pass; nothing else from the page is read."""
+    if isinstance(msg, dict) and msg.get("type") == "expand":
+        action = msg.get("action")
+        if isinstance(action, str) and action in EXPAND_ACTIONS:
+            return action
+    return None
+
+
+def expand_target(action: str, current: bool) -> bool:
+    """The state an action asks for."""
+    return (not current) if action == "toggle" else action == "expand"
+
+
+class ExpandLimiter:
+    """At most one accepted request per EXPAND_MS. Requests inside the window are dropped
+    (the caller may keep the last one and retry), so a page can't resize in a loop.
+    `now` is in milliseconds."""
+
+    def __init__(self, interval_ms: int = EXPAND_MS):
+        self.interval = interval_ms
+        self._last: float | None = None
+
+    def allow(self, now: float) -> bool:
+        if self._last is not None and now - self._last < self.interval:
+            return False
+        self._last = now
+        return True
 
 
 class CommandRunner:

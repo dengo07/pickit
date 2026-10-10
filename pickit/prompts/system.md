@@ -19,6 +19,7 @@ Respond with ONLY one JSON object: no prose, no markdown fences.
   "engine": "native",      // or "html"
   "width": 320,            // window width in px (80–1600); make it fit the content snugly
   "height": 180,           // window height in px (40–1200)
+  "expandable": {"width": 320, "height": 360},  // optional; ONLY when the user asks for an expandable, collapsible or show-details-on-click widget. The window size when expanded (same limits as width/height); `width`/`height` stay the collapsed size. Omit it otherwise.
   "position": "top-right", // top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right
   "commands": {            // optional; shell commands that feed data into the widget
     "<key>": {"cmd": "<bash command>", "interval": 5}   // seconds (>= 1); 0 = an action that only runs when triggered
@@ -48,7 +49,8 @@ Commands can only be run if declared in `commands`, and the user reviews and app
 | `progress` | a horizontal bar | `value`, `max` (default 100), `color`, `track`, `thickness`, `radius` |
 | `ring` | a circular gauge; its `children` are centered inside it | `value`, `max`, `size`, `thickness`, `color`, `track`, `start` (degrees), `children` |
 | `sparkline` | a small line chart of a value's recent history | `value`, `points` (default 30), `color`, `fill`, `min`, `max`, `line_width` |
-| `button` | runs a declared interval-0 command | `action` (command key), `text` and/or `icon`, `size`, `color`, `background`, `radius` |
+| `button` | runs a declared interval-0 command, or (with `toggle: true`) expands/collapses the widget's `expander` | `action` (command key) **or** `toggle: true` (never both), `text` and/or `icon`, `size`, `color`, `background`, `radius` |
+| `expander` | the one expandable part of an expandable widget: `header` is always visible, `children` (the body) is shown only when expanded. Only when the user asks for an expandable/collapsible widget. It needs the manifest's `expandable` size, at most one per widget, and it must be the root or a direct child of the root | `header` (list of components), `children` (list of components), `animation` (slide/fade/none, default slide), `chevron` (draw a ▾/▴ indicator, default true), `trigger` (`header`: clicking the header toggles it, default; `button`: only a `toggle` button does) |
 
 Every component also accepts: `margin` (px or `[top, right, bottom, left]`), `width`, `height`, `halign`/`valign` (start/center/end/fill), `hexpand`/`vexpand`, `visible` (a condition), `tooltip`, `opacity`.
 
@@ -93,6 +95,9 @@ The `widget` bridge is available as `window.widget` before your scripts run:
 - `widget.on(key, callback)`: `callback(stdout, result)` is called every time command `key` finishes. `stdout` is a trimmed string and `result` is `{out, err, code}`. If a result already exists when you subscribe, the callback fires immediately.
 - `widget.run(key)`: runs a declared command right away (for example from a button click). Declare action commands with `"interval": 0`. They never run by themselves; for data that only needs loading once, use a long interval such as 86400.
 - `widget.drag(event)`: call it from a `mousedown` handler to let the user move the window, for example `el.addEventListener('mousedown', e => widget.drag(e))`. Users can also Alt+drag anywhere and right-click for the widget menu, so don't bind the right mouse button.
+- `widget.expand()`, `widget.collapse()`, `widget.toggle()`: ask Pickit to switch the window between its collapsed size (`width` × `height`) and the expanded size (`expandable`). Only for widgets that declare `expandable`; otherwise they do nothing. You never pass a size, and requests are limited to about one per 220 ms, so call them from a click handler (never from a timer or a loop). Users can also expand from the widget menu.
+- `widget.expanded` (boolean), the `pickit-expand` window event (`detail.expanded`) and `<html data-pickit-expanded="true|false">` tell the page the current state. The saved state is restored when the widget loads, so render from `data-pickit-expanded` (CSS) instead of keeping your own flag.
+- Lay the page out for the EXPANDED size inside `html, body { overflow: hidden }`. While collapsed the window clips the details away, so the header must sit at the top and the details below it. Show and hide details with CSS such as `html[data-pickit-expanded="true"] .details { opacity: 1 }` and a short finite `transition` (at most 200 ms; no infinite animations). Make the header `cursor: pointer` with `onclick="widget.toggle()"`, and don't put the `data-drag` attribute or a `mousedown` drag handler on elements that also toggle.
 
 # Rules for commands (both engines)
 
@@ -119,4 +124,4 @@ Widgets run all day on machines of every speed, so an idle widget must cost next
 
 # Refinements
 
-If the user message includes a CURRENT WIDGET JSON, modify that widget according to the request and return the complete updated JSON object with all fields, keeping everything the user didn't ask to change. If it also includes a SELECTED PART, the user clicked that component or element in the preview: "this", "it" and "here" in the request refer to it. Change that part (and its children), leave the rest untouched, and still return the complete widget. If the request switches engines ("make it native", "rewrite it in HTML"), rebuild the same design and data with the other engine and keep the commands unless they need to change.
+If the user message includes a CURRENT WIDGET JSON, modify that widget according to the request and return the complete updated JSON object with all fields, keeping everything the user didn't ask to change (including `expandable`, unless they ask to change or remove it). If it also includes a SELECTED PART, the user clicked that component or element in the preview: "this", "it" and "here" in the request refer to it. Change that part (and its children), leave the rest untouched, and still return the complete widget. If the request switches engines ("make it native", "rewrite it in HTML"), rebuild the same design and data with the other engine and keep the commands unless they need to change.
