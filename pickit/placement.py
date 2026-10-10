@@ -57,6 +57,32 @@ def layer_top_left(anchors: dict[str, int], screen: tuple[int, int], size: tuple
     return x, y
 
 
+MIN_SIZE = (80, 40)
+MAX_SIZE = (1600, 1200)
+
+
+def clamp_size(width: int, height: int, area: tuple[int, int] | None = None) -> tuple[int, int]:
+    """A requested window size, limited to the widget bounds and to the monitor's work area
+    `area` (w, h) minus a margin on each side. The smaller limit wins."""
+    w = max(MIN_SIZE[0], min(MAX_SIZE[0], int(width)))
+    h = max(MIN_SIZE[1], min(MAX_SIZE[1], int(height)))
+    if area:
+        w = max(MIN_SIZE[0], min(w, area[0] - 2 * MARGIN))
+        h = max(MIN_SIZE[1], min(h, area[1] - 2 * MARGIN))
+    return w, h
+
+
+def safe_size(width, height, area: tuple[int, int] | None, fallback: tuple[int, int]) -> tuple[int, int]:
+    """clamp_size for values read from a widget.json that may have been edited by hand: anything
+    that isn't a plain finite number (strings, inf, NaN, lists, None) gives `fallback`, not an error."""
+    try:
+        if any(type(v) not in (int, float) for v in (width, height)):  # no bools, strings, None
+            return fallback
+        return clamp_size(width, height, area)
+    except (TypeError, ValueError, OverflowError):
+        return fallback
+
+
 def clamp(x: float, y: float, screen: tuple[int, int], size: tuple[int, int]) -> tuple[int, int]:
     """Keep a dragged widget on screen."""
     (sw, sh), (w, h) = screen, size

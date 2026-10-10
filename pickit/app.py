@@ -517,6 +517,11 @@ class MakerWindow(Gtk.ApplicationWindow):
         stack_box.set_valign(Gtk.Align.CENTER)
         stack_box.set_halign(Gtk.Align.CENTER)
         stack_box.pack_start(self.preview_hint, False, False, 0)
+        # Previews an expandable native widget in its expanded state. Hidden for everything else.
+        self.expand_switch = Gtk.CheckButton(label="Expanded", halign=Gtk.Align.CENTER)
+        self.expand_switch.set_no_show_all(True)
+        self.expand_switch.connect("toggled", lambda _b: self._apply_preview_expanded())
+        stack_box.pack_end(self.expand_switch, False, False, 0)
         self.preview_box = stack_box
         bg.add(stack_box)
         preview_scroll = Gtk.ScrolledWindow()
@@ -582,6 +587,8 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.auto_place = False
         self.prompt.get_buffer().set_text("")
         self._drop_preview()
+        self.expand_switch.set_active(False)
+        self.expand_switch.hide()
         self.preview_hint.show()
         self.examples.show()
         self._sync_ui()
@@ -651,6 +658,17 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.preview_box.reorder_child(self.preview, 0)
         return self.preview
 
+    def _apply_preview_expanded(self):
+        """Size the native preview and reveal or hide its expander to match the 'Expanded' switch."""
+        spec = self.draft
+        if self.preview is None or self.preview_engine != "native" or not spec:
+            return
+        exp = spec.get("expandable") if isinstance(spec.get("expandable"), dict) else None
+        on = bool(exp) and self.expand_switch.get_active()
+        w, h = (exp["width"], exp["height"]) if on else (spec["width"], spec["height"])
+        self.preview.set_size_request(w, h)
+        self.preview.set_expanded(on, animate=False)
+
     def _show_preview(self):
         spec = self.draft
         engine = engine_of(spec)
@@ -662,6 +680,11 @@ class MakerWindow(Gtk.ApplicationWindow):
         else:
             view.load_widget(spec["html"], spec["commands"], self.draft_approved)
         view.show_all()
+        can_expand = engine == "native" and isinstance(spec.get("expandable"), dict)
+        if not can_expand:
+            self.expand_switch.set_active(False)
+        self.expand_switch.set_visible(can_expand)
+        self._apply_preview_expanded()
         view.set_select_mode(self._on_part_selected if self.select_btn.get_active() else None)
         if self.selection and self.selection["kind"] == "native":
             if codeedit.node_path(spec["ui"], self.selection["node"]) is None:

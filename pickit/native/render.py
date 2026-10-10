@@ -9,6 +9,7 @@ import base64
 import collections
 import datetime
 import itertools
+import math
 import threading
 import urllib.request
 
@@ -20,7 +21,7 @@ gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango  # noqa: E402
 
 from .. import theme as themes  # noqa: E402
-from ..bridge import CommandRunner  # noqa: E402
+from ..bridge import EXPAND_MS, CommandRunner  # noqa: E402
 from . import data as D  # noqa: E402
 from . import draw  # noqa: E402
 from .spec import SAFE_CSS  # noqa: E402
@@ -68,6 +69,10 @@ def _set_icon(image: Gtk.Image, name: str, size: int):
 
 
 ANIMATION_MS = 350
+# A click on the expander's header counts only if the pointer moved no further than this (px).
+CLICK_SLOP = 4
+REVEAL_TRANSITIONS = {"slide": Gtk.RevealerTransitionType.SLIDE_DOWN, "fade": Gtk.RevealerTransitionType.CROSSFADE,
+                      "none": Gtk.RevealerTransitionType.NONE}
 
 
 def _animations_enabled() -> bool:
@@ -116,8 +121,17 @@ class NativeView(Gtk.EventBox):
     def __init__(self, background: str | None = None):
         super().__init__()
         self.set_visible_window(False)
+        self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.connect("button-press-event", self._on_press)
+        self.connect("button-release-event", self._on_release)
         self.on_drag = None
+        # Expandable widgets: the window sets on_expand_request(bool) and decides the size;
+        # `dragged()` says whether the last press turned into a window drag (so it isn't a click).
+        self.on_expand_request = None
+        self.dragged = None
+        self._expanded = False
+        self._expander: dict | None = None
+        self._press: tuple[float, float] | None = None
         self.runner: CommandRunner | None = None
         self.data: dict = {}
         self._bindings: list[_Binding] = []
@@ -171,6 +185,7 @@ class NativeView(Gtk.EventBox):
     def _build_tree(self, ui: dict):
         self._bindings, self._styles, self._nodes = [], {}, []
         self._hover = self.selected = None
+        self._expander = None
         themed = themes.is_themed(ui)
         # Widgets made for themes get the theme's card look, text color and font. Older widgets
         # keep the defaults they were designed with (often white text), so a light theme can't
@@ -179,6 +194,7 @@ class NativeView(Gtk.EventBox):
         self._card_defaults = (dict(CARD_DEFAULTS, background=t["card"], border=t["border"], radius=t["radius"])
                                if themed else CARD_DEFAULTS)
         self.add(self._build(ui))
+        self.set_expanded(self._expanded, animate=False)  # restore the state without a transition
         if themed:
             self._style(self, color=_safe(t["text"]),
                         **{"font-family": f'"{t["font"]}"' if t["font"] and _safe(t["font"]) else None})
@@ -538,8 +554,70 @@ class NativeView(Gtk.EventBox):
                            "background-image": "none"})
         look({k: p.get(k) for k in ("color", "background")})
         self._bind(p, ["color", "background"], look)
-        button.connect("clicked", lambda _b: self._action(p["action"]))
+        if p.get("toggle"):
+            # Asks the window to flip the expander; never runs a command.
+            button.connect("clicked", lambda _b: self._request_expand("toggle"))
+        else:
+            button.connect("clicked", lambda _b: self._action(p["action"]))
         return button
+
+    # --- expanding ---------------------------------------------------------------------
+    @property
+    def expanded(self) -> bool:
+        return self._expanded
+
+    def _request_expand(self, action: str):
+        if self.on_expand_request and not self._on_select:
+            self.on_expand_request(action)  # the window decides, rate limits and resizes
+
+    def set_expanded(self, on: bool, animate: bool = True):
+        """Show or hide the expander's body. The window resizes itself; this only reveals."""
+        self._expanded = bool(on)
+        info = self._expander
+        if not info:
+            return
+        revealer = info["revealer"]
+        revealer.set_transition_duration(EXPAND_MS)
+        revealer.set_transition_type(info["transition"] if animate and _animations_enabled()
+                                     else Gtk.RevealerTransitionType.NONE)
+        revealer.set_reveal_child(self._expanded)
+        if info["chevron"]:
+            info["chevron"].queue_draw()
+
+    def _make_expander(self, p):
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        top = Gtk.Box(spacing=8)
+        header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        header.set_hexpand(True)
+        for child in p.get("header", []):
+            header.pack_start(self._build(child), False, True, 0)
+        top.pack_start(header, True, True, 0)
+        chevron = None
+        if p.get("chevron", True):
+            chevron = self._area(16, 16, lambda cr, w, h: draw.chevron(
+                cr, w, h, self._expanded, draw.rgba(self.theme.get("muted"), (1, 1, 1, 0.7))))
+            chevron.set_valign(Gtk.Align.CENTER)
+            top.pack_start(chevron, False, False, 0)
+        revealer = Gtk.Revealer()
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        body.set_margin_top(6)
+        for child in p.get("children", []):
+            body.pack_start(self._build(child), False, True, 0)
+        revealer.add(body)
+        outer.pack_start(top, False, True, 0)
+        outer.pack_start(revealer, False, True, 0)
+        self._expander = {"revealer": revealer, "chevron": chevron, "header": top,
+                          "trigger": p.get("trigger", "header"),
+                          "transition": REVEAL_TRANSITIONS[p.get("animation", "slide")]}
+        return outer
+
+    def _in_header(self, x: float, y: float) -> bool:
+        top = self._expander["header"]
+        pos = top.translate_coordinates(self, 0, 0)
+        if not pos:
+            return False
+        alloc = top.get_allocation()
+        return pos[0] <= x < pos[0] + alloc.width and pos[1] <= y < pos[1] + alloc.height
 
     def _action(self, key):
         if not self.runner:
@@ -621,14 +699,30 @@ class NativeView(Gtk.EventBox):
 
     # --- input ------------------------------------------------------------------------
     def _on_press(self, _box, event):
+        self._press = None
         if self._on_select and event.button == 1:
             node = self.node_at(event.x, event.y)
             if node is not None:
                 self.select(node)
                 self._on_select(node)
             return True
+        if event.button == 1:
+            self._press = (event.x, event.y)
         if event.button == 1 and self.on_drag:
             self.on_drag(1)  # plain left-drag anywhere (except buttons) moves the widget
+            return True
+        return False
+
+    def _on_release(self, _box, event):
+        """A press and release on the expander's header, without moving the widget, toggles it."""
+        press, self._press = self._press, None
+        if (event.button != 1 or press is None or self._on_select or not self._expander
+                or self._expander["trigger"] != "header"):
+            return False
+        if (self.dragged and self.dragged()) or math.hypot(event.x - press[0], event.y - press[1]) > CLICK_SLOP:
+            return False
+        if self._in_header(press[0], press[1]):
+            self._request_expand("toggle")
             return True
         return False
 

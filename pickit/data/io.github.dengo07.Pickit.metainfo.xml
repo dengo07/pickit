@@ -60,6 +60,16 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.5.3" date="2026-10-10" urgency="high">
+      <description>
+        <p>Expandable widgets: click a widget to show more, click again to fold it away.</p>
+        <ul>
+          <li>Native widgets get an expandable part with a header that always shows; HTML widgets can expand from their own buttons</li>
+          <li>Ask the AI for an expandable widget, such as a clock that opens to show your agenda</li>
+          <li>Fixes widgets showing no data after updating from 1.5.1: Pickit now restarts an older widget daemon when you open it</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.5.2" date="2026-10-05">
       <description>
         <p>Safer widget commands.</p>

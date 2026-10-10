@@ -7,6 +7,7 @@ from pathlib import Path
 POSITIONS = {"top-left", "top-center", "top-right", "center-left", "center", "center-right",
              "bottom-left", "bottom-center", "bottom-right"}
 
+from . import store
 from .native.spec import UISpecError, validate_ui
 
 PROMPTS = Path(__file__).parent / "prompts"
@@ -53,7 +54,7 @@ def validate(spec: dict, engine: str = "auto") -> dict:
     try:
         width = max(80, min(1600, int(spec.get("width", 320))))
         height = max(40, min(1200, int(spec.get("height", 200))))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):  # OverflowError: JSON 1e999 is infinity
         raise SpecError("`width` and `height` must be integers.") from None
     position = spec.get("position", "top-right")
     if position not in POSITIONS:
@@ -87,9 +88,18 @@ def validate(spec: dict, engine: str = "auto") -> dict:
         "position": position,
         "commands": clean,
     }
+    if spec.get("expandable") is not None:
+        raw = spec["expandable"]
+        try:  # generator output is clamped like width/height; shape errors are rejected
+            if isinstance(raw, dict) and set(raw) == {"width", "height"}:
+                raw = {"width": max(80, min(1600, int(raw["width"]))),
+                       "height": max(40, min(1200, int(raw["height"])))}
+            result["expandable"] = store.validate_expandable(raw)
+        except (TypeError, ValueError, OverflowError) as e:
+            raise SpecError(str(e)) from None
     if kind == "native":
         try:
-            result["ui"] = validate_ui(spec.get("ui"), clean)
+            result["ui"] = validate_ui(spec.get("ui"), clean, result.get("expandable"))
         except UISpecError as e:
             raise SpecError(f"Native `ui` is invalid: {e}") from None
     else:

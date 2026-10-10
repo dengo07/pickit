@@ -58,11 +58,17 @@ COMPONENTS = {
     },
     "button": {
         "text": (TEXT,), "icon": (TEXT,), "action": (ACTION,), "size": (NUMBER,),
-        "color": (COLOR,), "background": (COLOR,), "radius": (INT,),
+        "color": (COLOR,), "background": (COLOR,), "radius": (INT,), "toggle": (BOOL,),
+    },
+    # The one expandable part of a widget: `header` is always visible, `children` is the body.
+    "expander": {
+        "header": (CHILDREN,), "children": (CHILDREN,), "animation": (ENUM, {"slide", "fade", "none"}),
+        "chevron": (BOOL,), "trigger": (ENUM, {"header", "button"}),
     },
 }
-REQUIRED = {"button": ("action",), "progress": ("value",), "ring": ("value",), "sparkline": ("value",),
-            "image": ("src",)}
+REQUIRED = {"progress": ("value",), "ring": ("value",), "sparkline": ("value",), "image": ("src",)}
+# Containers that may hold the expander: it sits at the root, or directly in the root container.
+EXPANDER_PARENTS = {"column", "row", "card", "overlay"}
 MAX_NODES = 250
 MAX_DEPTH = 12
 
@@ -138,12 +144,16 @@ def _check_value(kind, extra, value, path, commands):
             raise UISpecError(f"{path}: button actions must be declared with \"interval\": 0")
 
 
-def validate_ui(tree, commands: dict | None = None) -> dict:
-    """Validate a native component tree. Raises UISpecError with a precise path."""
+def validate_ui(tree, commands: dict | None = None, expandable: dict | None = None) -> dict:
+    """Validate a native component tree. Raises UISpecError with a precise path.
+    `expandable` is the widget's (already validated) expanded-size block, or None. A tree has an
+    `expander` exactly when the widget declares `expandable`."""
     commands = commands or {}
     count = 0
+    expanders: list[str] = []  # paths of expanders
+    toggles: list[str] = []  # paths of toggle buttons
 
-    def walk(node, path, depth):
+    def walk(node, path, depth, parent=None):
         nonlocal count
         count += 1
         if count > MAX_NODES:
@@ -156,6 +166,12 @@ def validate_ui(tree, commands: dict | None = None) -> dict:
         if kind not in COMPONENTS:
             raise UISpecError(f"{path}: unknown component \"{kind}\" (use {', '.join(sorted(COMPONENTS))})")
         allowed = {**COMMON, **COMPONENTS[kind]}
+        if kind == "expander":
+            expanders.append(path)
+            if len(expanders) > 1:
+                raise UISpecError(f"{path}: only one expander per widget (the window has one expanded size)")
+            if depth > 1 or (depth == 1 and parent not in EXPANDER_PARENTS):
+                raise UISpecError(f"{path}: the expander must be the root or a direct child of the root")
         for key, value in node.items():
             if key == "type":
                 continue
@@ -167,14 +183,29 @@ def validate_ui(tree, commands: dict | None = None) -> dict:
                 if not isinstance(value, list):
                     raise UISpecError(f"{path}.{key}: expected a list of components")
                 for i, child in enumerate(value):
-                    walk(child, f"{path}.{key}[{i}]", depth + 1)
+                    walk(child, f"{path}.{key}[{i}]", depth + 1, kind)
             else:
                 _check_value(spec[0], spec[1] if len(spec) > 1 else None, value, f"{path}.{key}", commands)
         for key in REQUIRED.get(kind, ()):
             if key not in node:
                 raise UISpecError(f"{path} ({kind}): \"{key}\" is required")
-        if kind == "button" and "text" not in node and "icon" not in node:
-            raise UISpecError(f"{path} (button): give it a \"text\" or an \"icon\"")
+        if kind == "button":
+            if "text" not in node and "icon" not in node:
+                raise UISpecError(f"{path} (button): give it a \"text\" or an \"icon\"")
+            toggle = node.get("toggle", False)
+            if toggle and "action" in node:
+                raise UISpecError(f"{path} (button): a toggle button can't also have an \"action\"")
+            if not toggle and "action" not in node:
+                raise UISpecError(f"{path} (button): \"action\" is required (or \"toggle\": true)")
+            if toggle:
+                toggles.append(path)
 
     walk(tree, "ui", 0)
+    if expanders and expandable is None:
+        raise UISpecError(f"{expanders[0]}: an expander needs the widget's \"expandable\" size "
+                          "({\"width\": W, \"height\": H})")
+    if toggles and not expanders:  # the most specific message first
+        raise UISpecError(f"{toggles[0]} (button): \"toggle\" needs an expander in the widget")
+    if expandable is not None and not expanders:
+        raise UISpecError("\"expandable\" is set but the ui has no expander")
     return tree

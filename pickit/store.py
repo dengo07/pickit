@@ -25,7 +25,28 @@ def notify_changed() -> None:
 
 
 # Changed without reloading the widget: position, and the lock / click-through switches.
-LIVE_FIELDS = ("x", "y", "locked", "click_through")
+LIVE_FIELDS = ("x", "y", "locked", "click_through", "expanded")
+
+
+def validate_expandable(value) -> dict | None:
+    """The `expandable` block ({"width", "height"}: the expanded size), or None if absent.
+    Strict: exactly two plain ints within the widget size bounds. Raises ValueError otherwise."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"width", "height"}:
+        raise ValueError("`expandable` must be an object with exactly `width` and `height`.")
+    out = {}
+    for key, (lo, hi) in (("width", (80, 1600)), ("height", (40, 1200))):
+        v = value[key]
+        if type(v) is not int or not lo <= v <= hi:
+            raise ValueError(f"`expandable.{key}` must be a whole number from {lo} to {hi}.")
+        out[key] = v
+    return out
+
+
+def is_expanded(manifest: dict) -> bool:
+    """The saved state: only a real True, and only for a widget that can expand."""
+    return manifest.get("expanded") is True and isinstance(manifest.get("expandable"), dict)
 
 
 def signature(manifest: dict) -> str:
@@ -153,6 +174,12 @@ def save_spec(spec: dict, widget_id: str | None = None, approved: bool = False,
         "commands": spec.get("commands", {}),
     })
     manifest.pop("approved_hash", None)  # never trusted from the file (see is_approved)
+    expandable = validate_expandable(spec.get("expandable"))
+    if expandable:
+        manifest["expandable"] = expandable
+    else:
+        manifest.pop("expandable", None)
+        manifest.pop("expanded", None)
     if approved:
         approvals.approve(manifest["id"], manifest["name"], manifest["commands"], source)
     if prompt:
@@ -180,6 +207,8 @@ def to_spec(manifest: dict) -> dict:
         "position": manifest.get("position", "top-right"),
         "commands": manifest.get("commands", {}),
     }
+    if manifest.get("expandable") is not None:
+        spec["expandable"] = manifest["expandable"]  # never `expanded`: that is state, not spec
     if spec["engine"] == "native":
         spec["ui"] = load_ui(manifest["id"])
     else:
@@ -202,7 +231,7 @@ def free_anchor(preferred: str) -> str:
 
 
 def _content(spec: dict) -> str:
-    keys = ("name", "engine", "width", "height", "position", "commands", "ui", "html")
+    keys = ("name", "engine", "width", "height", "position", "commands", "expandable", "ui", "html")
     return json.dumps({k: spec.get(k) for k in keys}, sort_keys=True)
 
 

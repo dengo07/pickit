@@ -23,7 +23,7 @@ try:
 except (ImportError, ValueError):  # not installed: X11 windows only
     GtkLayerShell = None
 
-from . import placement, store  # noqa: E402
+from . import bridge, placement, store  # noqa: E402
 
 MARGIN = placement.MARGIN
 _layer_shell: bool | None = None
@@ -66,6 +66,8 @@ def make_view(engine: str, cfg: dict, desktop: bool = True, background: str | No
         return NativeView(background=background)
     from .html_view import WidgetView
     return WidgetView(cfg.get("developer_extras", False), background=background, shared=desktop)
+
+
 def _transparent_window(win: Gtk.Window):
     screen = win.get_screen()
     visual = screen.get_rgba_visual()
@@ -136,6 +138,11 @@ class WidgetWindow(Gtk.Window):
         self.layer = layer_shell()
         self._anchors: dict[str, int] = {}
         self.lock_all = cfg.get("lock_widgets", False)
+        self.expanded = False
+        self._expand_timer = 0  # pending shrink after a collapse animation
+        self._expand_save_timer = 0
+        self._expand_limiter = bridge.ExpandLimiter()
+        self._drag_moved = False  # did the last press-drag move the widget (so it wasn't a click)?
 
         _transparent_window(self)
         self.set_decorated(False)
@@ -180,6 +187,12 @@ class WidgetWindow(Gtk.Window):
             self.view.set_theme(self.theme)
         self.view.enable_watchdog()
         self.view.on_drag = self._begin_drag
+        if engine == "html":
+            self.view.on_expand = self.request_expand  # the page can only ask
+        else:
+            self.view.on_expand_request = self.request_expand
+            self.view.dragged = lambda: self._drag_moved
+        self._tell_view_expanded()
         self.view.connect("button-press-event", self._on_button_press)
         if engine == "html":
             self.view.connect("context-menu", lambda *a: True)  # we show our own menu
@@ -189,9 +202,12 @@ class WidgetWindow(Gtk.Window):
     def apply_manifest(self, manifest: dict, reposition: bool = False):
         self.manifest = manifest
         self.signature = store.signature(manifest)
-        w, h = manifest["width"], manifest["height"]
+        self._cancel_expand_timers()
+        self.expanded = store.is_expanded(manifest)  # restored without animation
+        w, h = self._target_size(manifest, self.expanded)
         self.set_size_request(w, h)
         self.resize(w, h)
+        self._tell_view_expanded()
         moved = "x" in manifest and not reposition
         monitor = chosen_monitor(manifest)
         if self.layer:
@@ -246,10 +262,120 @@ class WidgetWindow(Gtk.Window):
         self.stick()
         return False
 
+    # --- expanding ----------------------------------------------------------
+    # The one code path that changes the window size. The size comes from the manifest's
+    # validated `expandable` block, never from a page or a message.
+    def can_expand(self) -> bool:
+        return isinstance(self.manifest.get("expandable"), dict)  # a hand-edited file can hold anything
+
+    def _work_area(self) -> tuple[int, int]:
+        display = Gdk.Display.get_default()
+        gdk_window = self.get_window()
+        monitor = (display.get_monitor_at_window(gdk_window) if gdk_window else None) \
+            or chosen_monitor(self.manifest) or display.get_primary_monitor() or display.get_monitor(0)
+        area = monitor.get_workarea()
+        return area.width, area.height
+
+    def _target_size(self, manifest: dict, expanded: bool) -> tuple[int, int]:
+        # A hand-edited widget.json can hold anything: every size is clamped, and a bad one
+        # falls back to the collapsed (or the default) size.
+        collapsed = placement.safe_size(manifest.get("width"), manifest.get("height"), None, (320, 200))
+        size = manifest.get("expandable")
+        if expanded and isinstance(size, dict):
+            return placement.safe_size(size.get("width"), size.get("height"), self._work_area(), collapsed)
+        return collapsed
+
+    def _cancel_expand_timers(self):
+        if self._expand_timer:
+            GLib.source_remove(self._expand_timer)
+            self._expand_timer = 0
+
+    def _tell_view_expanded(self, animate: bool = False):
+        if self.engine == "html":
+            self.view.set_expanded_state(self.expanded)
+        else:
+            self.view.set_expanded(self.expanded, animate)
+
+    def request_expand(self, action: str):
+        """A request from content ("expand", "collapse" or "toggle"). Rate limited."""
+        if action not in bridge.EXPAND_ACTIONS or not self.can_expand():
+            return
+        if not self._expand_limiter.allow(GLib.get_monotonic_time() / 1000):
+            return
+        self.set_expanded(bridge.expand_target(action, self.expanded))
+
+    def set_expanded(self, on: bool, animate: bool = True):
+        if not self.can_expand() or bool(on) == self.expanded:
+            return
+        self.expanded = bool(on)
+        self._cancel_expand_timers()
+        if self.expanded:
+            self._apply_size()  # grow first, then let the content reveal
+            self._tell_view_expanded(animate)
+        else:
+            self._tell_view_expanded(animate)  # hide first, then shrink once it has finished
+            animations = Gtk.Settings.get_default().get_property("gtk-enable-animations")
+            if animate and animations:
+                self._expand_timer = GLib.timeout_add(bridge.EXPAND_MS, self._finish_collapse)
+            else:
+                self._apply_size()
+        self._schedule_expanded_save()
+
+    def _finish_collapse(self):
+        self._expand_timer = 0
+        self._apply_size()
+        return False
+
+    def _apply_size(self):
+        w, h = self._target_size(self.manifest, self.expanded)
+        self.set_size_request(w, h)
+        self.resize(w, h)
+        screen = self._screen_size()
+        # Pushed back on screen to fit the expanded size, it returns to where it was on collapse.
+        before = getattr(self, "_pre_expand", None) if not self.expanded else None
+        self._pre_expand = None
+        if self.layer:
+            # Anchored to an edge it grows away from it. A dragged widget is pinned by its
+            # top-left corner, so keep the new size on screen.
+            if "top" in self._anchors and "left" in self._anchors:
+                x, y = before or (self._anchors["left"], self._anchors["top"])
+                nx, ny = placement.clamp(x, y, screen, (w, h))
+                if self.expanded and (nx, ny) != (x, y):
+                    self._pre_expand = (x, y)
+                self._set_anchors(placement.layer_moved(nx, ny))
+        else:
+            x, y = before or self.get_position()
+            nx, ny = placement.clamp(x, y, screen, (w, h))
+            if self.expanded and (nx, ny) != (x, y):
+                self._pre_expand = (x, y)
+            if (nx, ny) != self.get_position():
+                self.move(nx, ny)
+
+    def _schedule_expanded_save(self):
+        if self._expand_save_timer:
+            GLib.source_remove(self._expand_save_timer)
+        self._expand_save_timer = GLib.timeout_add(600, self._save_expanded)
+
+    def _save_expanded(self):
+        self._expand_save_timer = 0
+        try:
+            manifest = store.load(self.manifest["id"])
+        except (OSError, ValueError):  # gone, or half-written by someone else
+            return False
+        if store.is_expanded(manifest) != self.expanded and isinstance(manifest.get("expandable"), dict):
+            if self.expanded:
+                manifest["expanded"] = True
+            else:
+                manifest.pop("expanded", None)  # a widget that is collapsed carries no field
+            store.save_manifest(manifest, notify=False)
+            self.manifest["expanded"] = self.expanded
+        return False
+
     # --- moving -----------------------------------------------------------
     # Dock windows can't be moved by the WM, so dragging is done by hand: poll the
     # pointer while the button is held and move the window along with it.
     def _begin_drag(self, _button=1):
+        self._drag_moved = False
         if self._drag or self.locked():
             return
         if self.layer:
@@ -265,6 +391,8 @@ class WidgetWindow(Gtk.Window):
         _, px, py = pointer.get_position()
         _, _, _, mask = Gdk.get_default_root_window().get_device_position(pointer)
         sx, sy, wx, wy = self._drag
+        if abs(px - sx) > 4 or abs(py - sy) > 4:
+            self._drag_moved = True
         self.move(wx + px - sx, wy + py - sy)
         if mask & Gdk.ModifierType.BUTTON1_MASK:
             return True
@@ -304,6 +432,8 @@ class WidgetWindow(Gtk.Window):
         sx, sy, x, y, just_moved = self._drag
         if not just_moved:  # skip one step after a move, so the compositor has applied it
             nx, ny = placement.clamp(x + px - sx, y + py - sy, self._screen_size(), self._size())
+            if abs(px - sx) > 4 or abs(py - sy) > 4:
+                self._drag_moved = True
             if (nx, ny) != (x, y):
                 self._set_anchors(placement.layer_moved(nx, ny))
                 self._drag[2:] = [nx, ny, True]
@@ -368,6 +498,8 @@ class WidgetWindow(Gtk.Window):
     def _menu(self):
         menu = Gtk.Menu()
         items = [("Edit…", "edit"), ("Reload", "reload")]
+        if self.can_expand():
+            items.insert(0, ("Collapse" if self.expanded else "Expand", "expand"))
         if self.manifest.get("commands"):
             items.append(("Review commands…", "approve"))
         items += [None, ("Lock position", "lock"), ("Click-through", "click_through"),
@@ -419,7 +551,9 @@ class WidgetWindow(Gtk.Window):
 
     def _menu_action(self, action):
         wid = self.manifest["id"]
-        if action == "reload":
+        if action == "expand":
+            self.set_expanded(not self.expanded)
+        elif action == "reload":
             self.apply_manifest(store.load(wid))
         elif action in ("lock", "click_through"):
             manifest = store.load(wid)

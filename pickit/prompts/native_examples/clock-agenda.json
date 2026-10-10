@@ -1,0 +1,34 @@
+{
+ "name": "Clock with date",
+ "engine": "native",
+ "width": 240,
+ "height": 96,
+ "expandable": {"width": 240, "height": 150},
+ "position": "top-left",
+ "ui": {
+  "type": "card",
+  "children": [
+   {
+    "type": "expander",
+    "trigger": "button",
+    "animation": "fade",
+    "chevron": false,
+    "header": [
+     {
+      "type": "row",
+      "children": [
+       {"type": "label", "text": "{now|time:%H:%M}", "size": 40, "weight": "light", "color": "{theme.text}"},
+       {"type": "spacer"},
+       {"type": "button", "toggle": true, "icon": "view-more-symbolic", "size": 16, "color": "{theme.muted}",
+        "tooltip": "Show the date"}
+      ]
+     }
+    ],
+    "children": [
+     {"type": "label", "text": "{now|time:%A, %d %B %Y}", "size": 14, "color": "{theme.text}"},
+     {"type": "label", "text": "Week {now|time:%V}  ·  day {now|time:%j}", "size": 12, "color": "{theme.muted}"}
+    ]
+   }
+  ]
+ }
+}
