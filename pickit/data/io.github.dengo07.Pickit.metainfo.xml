@@ -60,6 +60,17 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.5.4" date="2026-11-15" urgency="high">
+      <description>
+        <p>Security fixes, and expandable widgets for everyone: the 1.5.3 download didn't contain them.</p>
+        <ul>
+          <li>Commands approved for the restricted sandbox are never run with more access without asking again</li>
+          <li>Sandboxed commands no longer see API keys or other secrets from Pickit's environment</li>
+          <li>The widget list shows a Review button on widgets whose commands are waiting for approval</li>
+          <li>Expandable HTML widgets can be previewed in both sizes in the maker</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.5.3" date="2026-10-10" urgency="high">
       <description>
         <p>Expandable widgets: click a widget to show more, click again to fold it away.</p>

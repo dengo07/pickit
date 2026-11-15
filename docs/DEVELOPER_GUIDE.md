@@ -122,7 +122,7 @@ Run `pytest` (no display needed), then the smoke tests, which need a display.
 | File | What it is |
 |---|---|
 | `workflows/ci.yml` | On every push: lint + tests (plain Python, no GTK), the X11 smoke test (Xvfb), the Wayland smoke test (headless Sway). |
-| `workflows/release.yml` | On a `v*` tag: builds the AppImage and the signed Flatpak, publishes the Flatpak repository to GitHub Pages, creates the GitHub release. Needs the `FLATPAK_GPG_PRIVATE_KEY` secret. |
+| `workflows/release.yml` | On a `v*` tag: first checks that the tag matches `__version__`, the changelog and the metainfo file (`packaging/check-release-version.sh`), so a tag on the wrong commit builds nothing; then builds the AppImage and the signed Flatpak, publishes the Flatpak repository to GitHub Pages, creates the GitHub release. Needs the `FLATPAK_GPG_PRIVATE_KEY` secret. |
 | `workflows/runtime-check.yml` | Weekly: opens an issue if Flathub marks the GNOME runtime end-of-life. |
 | `dependabot.yml` | Monthly pull requests to update GitHub Actions versions. |
 | `ISSUE_TEMPLATE/*`, `PULL_REQUEST_TEMPLATE.md` | Forms for bug reports, compatibility reports, feature requests and pull requests. |
