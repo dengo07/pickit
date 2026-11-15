@@ -5,7 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-11-15
+
 Fixes from a third report by the same security researcher. None of these can be triggered remotely or without you approving a command or changing a setting.
+
+The downloads published as 1.5.3 were built from the 1.5.2 code by mistake, so this is also the first release that contains the 1.5.3 changes below: expandable widgets, and replacing an older widget daemon after an update.
 
 ### Added
 - **The Expanded switch now works for HTML previews too.** An expandable HTML draft can be previewed in both sizes in the maker, and the page's own `widget.expand()`, `collapse()` and `toggle()` work there as they do on the desktop.
@@ -198,7 +202,8 @@ A security release. Please update, especially if you open `.pickit` files from o
 - A widget context menu: edit with AI, reload, review commands, reset position, hide, delete.
 - Self-contained Flatpak and AppImage packages.
 
-[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.3...HEAD
+[Unreleased]: https://github.com/dengo07/pickit/compare/v1.5.4...HEAD
+[1.5.4]: https://github.com/dengo07/pickit/compare/v1.5.3...v1.5.4
 [1.5.3]: https://github.com/dengo07/pickit/compare/v1.5.2...v1.5.3
 [1.5.2]: https://github.com/dengo07/pickit/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/dengo07/pickit/compare/v1.5.0...v1.5.1
