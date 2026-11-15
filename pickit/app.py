@@ -16,6 +16,7 @@ from . import (  # noqa: E402
     approvals,
     autostart,
     backends,
+    bridge,
     codeedit,
     config,
     generator,
@@ -336,6 +337,7 @@ class ApprovalsDialog(Gtk.Dialog):
             current = store.is_approved(m)
             when = entry.get("approved_at", "")[:16].replace("T", " ") or "before Pickit 1.5.2"
             ran = "in the sandbox" if entry.get("runner") == sandbox.RESTRICTED else (
+                "in the sandbox, sharing your network" if entry.get("runner") == sandbox.SHARED else
                 "with full access" if entry.get("runner", sandbox.HOST) == sandbox.HOST else "with your runner")
             status = "" if current else " · <b>not in effect</b> (the commands changed, or how commands run)"
             text = (f"<b>{GLib.markup_escape_text(m['name'])}</b>  "
@@ -481,6 +483,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.undo_stack: list[dict] = []
         self.redo_stack: list[dict] = []
         self.approved_hashes: set[str] = set()
+        self.approved_under = approvals.runner_now()  # how commands ran when those were approved
         history = Gtk.Box()
         history.get_style_context().add_class("linked")
         self.undo_btn = Gtk.Button.new_from_icon_name("edit-undo-symbolic", Gtk.IconSize.BUTTON)
@@ -517,7 +520,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         stack_box.set_valign(Gtk.Align.CENTER)
         stack_box.set_halign(Gtk.Align.CENTER)
         stack_box.pack_start(self.preview_hint, False, False, 0)
-        # Previews an expandable native widget in its expanded state. Hidden for everything else.
+        # Previews an expandable widget in its expanded state. Hidden for everything else.
         self.expand_switch = Gtk.CheckButton(label="Expanded", halign=Gtk.Align.CENTER)
         self.expand_switch.set_no_show_all(True)
         self.expand_switch.connect("toggled", lambda _b: self._apply_preview_expanded())
@@ -574,9 +577,23 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.reset_editor()
 
     # --- editor state -------------------------------------------------------
+    def _sync_runner(self) -> bool:
+        """Approvals given in the editor are for how commands ran at that moment. If Settings (or
+        config.json) now runs them with more access, forget those approvals so nothing carries
+        over, e.g. from the sandbox to full access. Returns whether the draft lost its approval."""
+        before, self.approved_under = self.approved_under, approvals.runner_now()
+        if approvals.holds(before):
+            return False
+        self.approved_hashes = set()
+        lost = bool(self.draft and self.draft.get("commands") and self.draft_approved)
+        if lost:
+            self.draft_approved = False
+        return lost
+
     def reset_editor(self):
         if self.busy or not self._can_drop_code_edits():
             return
+        self._sync_runner()
         self.code_dirty = False
         self._clear_selection()
         self.select_btn.set_active(False)
@@ -601,6 +618,7 @@ class MakerWindow(Gtk.ApplicationWindow):
             return
         self.code_dirty = False
         self._clear_selection()
+        self._sync_runner()
         manifest = store.load(widget_id)
         self.editing_id = widget_id
         self.draft = store.to_spec(manifest)
@@ -656,18 +674,33 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.preview.set_margin_bottom(24)
             self.preview_box.pack_start(self.preview, False, False, 0)
             self.preview_box.reorder_child(self.preview, 0)
+            if engine == "html":
+                # As on the desktop, the page can only ask; here the answer is the switch.
+                self._preview_expand_limiter = bridge.ExpandLimiter()
+                self.preview.on_expand = self._on_preview_expand_request
         return self.preview
 
+    def _on_preview_expand_request(self, action: str):
+        """An HTML preview's page called widget.expand(), collapse() or toggle()."""
+        if not self.expand_switch.get_visible() or action not in bridge.EXPAND_ACTIONS:
+            return
+        if self._preview_expand_limiter.allow(GLib.get_monotonic_time() / 1000):
+            self.expand_switch.set_active(bridge.expand_target(action, self.expand_switch.get_active()))
+
     def _apply_preview_expanded(self):
-        """Size the native preview and reveal or hide its expander to match the 'Expanded' switch."""
+        """Size the preview to match the 'Expanded' switch, and reveal the native expander or tell
+        the HTML page (the same message a desktop window sends it)."""
         spec = self.draft
-        if self.preview is None or self.preview_engine != "native" or not spec:
+        if self.preview is None or not spec:
             return
         exp = spec.get("expandable") if isinstance(spec.get("expandable"), dict) else None
         on = bool(exp) and self.expand_switch.get_active()
         w, h = (exp["width"], exp["height"]) if on else (spec["width"], spec["height"])
         self.preview.set_size_request(w, h)
-        self.preview.set_expanded(on, animate=False)
+        if self.preview_engine == "native":
+            self.preview.set_expanded(on, animate=False)
+        else:
+            self.preview.set_expanded_state(on)
 
     def _show_preview(self):
         spec = self.draft
@@ -680,7 +713,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         else:
             view.load_widget(spec["html"], spec["commands"], self.draft_approved)
         view.show_all()
-        can_expand = engine == "native" and isinstance(spec.get("expandable"), dict)
+        can_expand = isinstance(spec.get("expandable"), dict)
         if not can_expand:
             self.expand_switch.set_active(False)
         self.expand_switch.set_visible(can_expand)
@@ -751,6 +784,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         self.busy = False
         self.spinner.stop()
         prev_cmds = previous.get("commands") if previous else None
+        self._sync_runner()
         if not spec["commands"]:
             self.draft_approved = True
         elif not (self.draft_approved and store.commands_hash(prev_cmds) == store.commands_hash(spec["commands"])):
@@ -787,12 +821,15 @@ class MakerWindow(Gtk.ApplicationWindow):
 
     def _review_draft_commands(self):
         if self.draft and self.draft["commands"]:
+            self._sync_runner()
             self.draft_approved = approval_dialog(self, self.draft["name"], self.draft["commands"])
             self._show_preview()
 
     def place(self):
         if not self.draft or not self.apply_code():
             return
+        if self._sync_runner():  # approved for a runner with less access than the current one
+            self.draft_approved = approval_dialog(self, self.draft["name"], self.draft["commands"])
         manifest = store.save_spec(self.draft, self.editing_id, approved=self.draft_approved,
                                    prompt=" → ".join(self.prompts) or None, source=self.draft_source)
         if not self.draft_approved:
@@ -874,6 +911,7 @@ class MakerWindow(Gtk.ApplicationWindow):
             self.status.set_text("The code has a problem; see below the editor.")
             return False
         commands_changed = store.commands_hash(spec["commands"]) != store.commands_hash(self.draft["commands"])
+        self._sync_runner()
         self._remember(self.draft)
         self.draft = spec
         if not spec["commands"]:
@@ -934,6 +972,7 @@ class MakerWindow(Gtk.ApplicationWindow):
     def _step_history(self, source: list, target: list, message: str):
         if self.busy or not source or self.draft is None or not self._can_drop_code_edits():
             return
+        self._sync_runner()
         target.append(self.draft)
         self.draft = source.pop()
         self.code_dirty = False
@@ -1131,6 +1170,7 @@ class MakerWindow(Gtk.ApplicationWindow):
         spec["position"] = store.free_anchor(spec["position"])
         self.draft, self.editing_id, self.prompts, self.auto_place = spec, None, [history], False
         self.undo_stack, self.redo_stack, self.approved_hashes = [], [], set()
+        self.approved_under = approvals.runner_now()
         self.prompt.get_buffer().set_text("")
         self.draft_source = "imported" if untrusted else "gallery"
         self.draft_approved = untrusted or not spec["commands"] or approval_dialog(
@@ -1216,6 +1256,17 @@ class MakerWindow(Gtk.ApplicationWindow):
             for b in (edit, more):
                 b.get_style_context().add_class("flat")
             row.pack_start(name, True, True, 0)
+            if m.get("commands") and not store.is_approved(m):
+                # Shows no live data until its commands are approved (new, changed, or approved
+                # for a runner with less access than the current one).
+                review = Gtk.Button(label="Review", tooltip_text="This widget's commands aren't approved, so it "
+                                                                 "shows no live data. Click to review them.")
+                review.set_image(Gtk.Image.new_from_icon_name("dialog-warning-symbolic", Gtk.IconSize.BUTTON))
+                review.set_always_show_image(True)
+                review.get_style_context().add_class("warning-note")
+                review.get_style_context().add_class("flat")
+                review.connect("clicked", lambda _b, wid=m["id"]: self.review_commands(wid))
+                row.pack_start(review, False, False, 0)
             for key, icon, tip in (("locked", "changes-prevent-symbolic", "Locked in place"),
                                    ("click_through", "input-mouse-symbolic", "Click-through")):
                 if m.get(key):
@@ -1228,6 +1279,15 @@ class MakerWindow(Gtk.ApplicationWindow):
             row.pack_start(more, False, False, 0)
             self.listbox.add(row)
         self.listbox.show_all()
+
+    def review_commands(self, widget_id: str):
+        """The same review as right-click → Review commands on the widget itself."""
+        manifest = store.load(widget_id)
+        if approval_dialog(self, manifest["name"], manifest.get("commands", {})):
+            store.approve(manifest, "reviewed")
+        else:
+            store.revoke(widget_id)
+        self.refresh_list()
 
     def set_flag(self, widget_id: str, key: str, value: bool):
         """Lock position or click-through: the daemon applies it without reloading the widget."""
@@ -1264,6 +1324,11 @@ class MakerWindow(Gtk.ApplicationWindow):
             config.save(self.app.cfg)
             store.notify_changed()  # the desktop daemon rereads the settings (e.g. "lock all")
             self.backend_combo.set_active_id(self.app.cfg["backend"])
+            self.refresh_list()  # which widgets need a review depends on how commands run
+            if self._sync_runner():
+                self._show_preview()  # stops the preview's commands until they're approved again
+                self.status.set_text("Commands now run with more access, so this draft's commands need "
+                                     "your approval again (Review commands).")
         dlg.destroy()
 
 

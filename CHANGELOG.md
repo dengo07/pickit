@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+Fixes from a third report by the same security researcher. None of these can be triggered remotely or without you approving a command or changing a setting.
+
+### Added
+- **The Expanded switch now works for HTML previews too.** An expandable HTML draft can be previewed in both sizes in the maker, and the page's own `widget.expand()`, `collapse()` and `toggle()` work there as they do on the desktop.
+- **The widget list shows which widgets are waiting for approval.** A widget whose commands aren't approved (new, changed, or approved for less access than commands have now) gets a **Review** button next to its name, which opens the same review as right-click → Review commands. Until now such a widget just showed no data.
+
+### Security
+- **An approval given in the sandbox no longer becomes a full-access approval through the editor.** If you approved a draft's commands while they ran in the restricted sandbox, then switched Settings to full access with the draft still open, the draft stayed approved: its preview kept running and placing it recorded a full-access approval. Now the editor forgets its approvals when commands get more access, the preview stops, and placing asks again. Running widgets check this every time a command starts, and reload when the setting changes.
+- **Sandboxed commands start with a clean environment.** The restricted sandbox hid your files but passed on Pickit's environment variables, so a command could read an `ANTHROPIC_API_KEY` or any other secret set there. Commands in the sandbox now get only `PATH`, `HOME`, your user name, locale, time zone and `TERM`. In every mode, Pickit's own API key variables are removed before a widget command runs.
+- **Sharing your network is its own approval.** In the sandbox, internet commands get a network of their own when the `passt` package is installed, and share yours when it isn't. Both used to be recorded as the same approval, so removing `passt` quietly gave approved commands more access. Now an approval records which one it was, and internet commands approved with a network of their own don't run on yours until you approve again. If you use the sandbox without `passt`, widgets with internet commands ask for approval once after this update.
+- **Command output is capped while the command runs.** Pickit used to read everything a command printed into memory and trim it afterwards, so a command printing gigabytes could exhaust memory. It now keeps the first 256 KB (4 KB of errors) and discards the rest as it arrives.
+- **Approvals from Pickit 1.5.1 or earlier aren't carried over any more.** The first start after updating used to accept the approval stored inside each widget file, which another program could have written there. If you update straight from 1.5.1 or earlier, widgets with commands now ask you to review them once. Installs that already ran 1.5.2 or 1.5.3 are not affected.
+
 ## [1.5.3] - 2026-10-10
 
 ### Added

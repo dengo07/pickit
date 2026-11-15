@@ -9,10 +9,11 @@ try:
 except ImportError:  # BRIDGE_JS and the expand helpers are pure; only CommandRunner needs GLib
     GLib = None
 
-from . import runtime, sandbox
+from . import approvals, runtime, sandbox
 
 COMMAND_TIMEOUT = sandbox.TIMEOUT
 MAX_OUTPUT = 256 * 1024
+MAX_ERROR = 4096
 
 BRIDGE_JS = r"""
 (() => {
@@ -85,6 +86,42 @@ class ExpandLimiter:
         return True
 
 
+def _capture(argv: list[str], env: dict, timeout: float, max_out: int = MAX_OUTPUT,
+             max_err: int = MAX_ERROR) -> tuple[str, str, int]:
+    """Run `argv` and return (stdout, stderr, exit code), keeping at most `max_out`/`max_err`
+    bytes while it runs: whatever a command prints beyond that is read and thrown away, so a
+    command can't make Pickit hold its whole output in memory."""
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+                         cwd=str(Path.home()), env=env)
+    kept = {"out": bytearray(), "err": bytearray()}
+
+    def drain(stream, name, limit):
+        buf = kept[name]
+        try:
+            while chunk := stream.read1(65536):
+                if len(buf) < limit:
+                    buf += chunk[:limit - len(buf)]
+        except (OSError, ValueError):
+            pass  # closed under us after a timeout
+
+    readers = [threading.Thread(target=drain, args=(p.stdout, "out", max_out), daemon=True),
+               threading.Thread(target=drain, args=(p.stderr, "err", max_err), daemon=True)]
+    for t in readers:
+        t.start()
+    try:
+        code = p.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.wait()
+        raise
+    finally:
+        for t in readers:
+            t.join(timeout=2)  # a grandchild may still hold the pipe; don't wait for it
+        p.stdout.close()
+        p.stderr.close()
+    return (bytes(kept["out"]).decode(errors="replace"), bytes(kept["err"]).decode(errors="replace"), code)
+
+
 class CommandRunner:
     """Runs a widget's declared commands on their intervals.
 
@@ -98,6 +135,9 @@ class CommandRunner:
         self._running: set[str] = set()
         self._timers: list[int] = []
         self._stopped = False
+        # Whoever starts a runner has checked the approval for how commands run right now.
+        # If that changes to something the approval doesn't cover, nothing more runs here.
+        self._approved_under = approvals.runner_now()
 
     def start(self):
         # Only periodic commands run automatically. Interval-0 commands are actions
@@ -136,15 +176,20 @@ class CommandRunner:
         # Through the configured runner (full access, restricted sandbox or your own wrapper).
         # `timeout` runs on the host side too, so a hung command is killed even when it was
         # started through flatpak-spawn.
-        argv = runtime.host_argv(sandbox.argv(command["cmd"], bool(command.get("network")),
-                                              sandbox.current()))
+        runner = sandbox.current()
+        if not approvals.holds(self._approved_under, runner, self.commands):
+            result = {"out": "", "code": sandbox.FAILED,
+                      "err": "pickit: how commands run has changed; approve this widget's commands again"}
+            GLib.idle_add(self._finish, key, result)
+            return
+        # Sharing the host's network (no pasta) only when that is what was approved; the
+        # runner script refuses otherwise, whatever this process believes about pasta.
+        share = sandbox.policy(runner) == sandbox.SHARED
+        argv = runtime.host_argv(sandbox.argv(command["cmd"], bool(command.get("network")), runner, share))
         try:
-            p = subprocess.run(argv, capture_output=True, text=True, errors="replace",
-                               timeout=COMMAND_TIMEOUT + 5, cwd=str(Path.home()),
-                               env=runtime.host_env(), stdin=subprocess.DEVNULL)
-            result = {"out": p.stdout[:MAX_OUTPUT].strip(), "err": p.stderr[:4096].strip(),
-                      "code": p.returncode}
-            if p.returncode == sandbox.FAILED and result["err"].startswith("pickit:"):
+            out, err, code = _capture(argv, runtime.command_env(), COMMAND_TIMEOUT + 5)
+            result = {"out": out.strip(), "err": err.strip(), "code": code}
+            if code == sandbox.FAILED and result["err"].startswith("pickit:"):
                 print(result["err"].splitlines()[0], flush=True)  # the runner refused: in daemon.log
         except subprocess.TimeoutExpired:
             result = {"out": "", "err": f"timed out after {COMMAND_TIMEOUT}s", "code": -1}

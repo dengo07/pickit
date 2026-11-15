@@ -46,6 +46,20 @@ def host_env() -> dict:
     return env
 
 
+# Pickit's own credentials for the AI backends. No widget command needs them.
+OWN_SECRETS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "OPENROUTER_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
+
+
+def command_env() -> dict:
+    """Environment for widget commands: host_env() without Pickit's own credentials. The
+    restricted runner goes further and starts commands with a short fixed list of variables
+    (sandbox.py); with full access a command runs as you and sees your session's environment."""
+    env = host_env()
+    for key in OWN_SECRETS:
+        env.pop(key, None)
+    return env
+
+
 def self_command(*args: str) -> list[str]:
     """Command line (as run on the host) that starts this app with `args`."""
     if IN_FLATPAK:

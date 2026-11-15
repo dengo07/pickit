@@ -279,6 +279,134 @@ assert opens(html_spec, False, False) == (True, False), "gallery widgets must no
 app.confirm, app.approval_dialog = real_confirm, real_approval
 print("ok: imported files open only when trusted")
 
+# A draft approved while commands ran in the sandbox must not become a full-access approval
+# when Settings changes: the preview stops and placing asks again.
+from pickit import approvals, sandbox  # noqa: E402
+
+
+def use_runner(value):
+    cfg = config.load()
+    cfg["command_runner"] = value
+    config.save(cfg)
+    sandbox._cache = None
+
+
+class FakeSettings:
+    def __init__(self, *_a): ...
+    def run(self): return Gtk.ResponseType.OK
+    def apply(self, cfg): cfg["command_runner"] = "host"
+    def destroy(self): ...
+
+
+use_runner("restricted")
+draft = {**with_commands, "name": "Escalate", "width": 100, "height": 40}
+shown, asked = [], []
+maker = SimpleNamespace(
+    draft=draft, draft_approved=True, approved_under=approvals.runner_now(), editing_id=None, prompts=[],
+    approved_hashes={store.commands_hash(draft["commands"])}, draft_source="generated",
+    app=SimpleNamespace(cfg=config.load()), backend_combo=SimpleNamespace(set_active_id=lambda _v: None),
+    status=SimpleNamespace(set_text=lambda _t: None), _show_preview=lambda: shown.append(True),
+    apply_code=lambda: True, refresh_list=lambda: None, reset_editor=lambda: None)
+maker._sync_runner = lambda: app.MakerWindow._sync_runner(maker)
+real_settings, real_ensure = app.SettingsDialog, app.autostart.ensure_daemon
+app.SettingsDialog, app.autostart.ensure_daemon = FakeSettings, lambda: None
+app.approval_dialog = lambda *_a, **_kw: asked.append(True) and False
+app.MakerWindow._on_settings(maker, None)
+sandbox._cache = None
+assert sandbox.current() == "host"
+assert not maker.draft_approved and not maker.approved_hashes and shown, "a sandbox approval survived Settings"
+# The setting changed behind the editor's back (config.json edited): placing still asks.
+use_runner("restricted")
+maker.draft_approved, maker.approved_under = True, approvals.runner_now()
+use_runner("host")
+app.MakerWindow.place(maker)
+placed = next(m for m in store.list_widgets() if m["name"] == "Escalate")
+assert asked and not store.is_approved(placed) and placed["id"] not in approvals.entries(), \
+    "placing turned a sandbox approval into a full-access one"
+store.delete(placed["id"])
+use_runner("host")
+app.SettingsDialog, app.autostart.ensure_daemon, app.approval_dialog = real_settings, real_ensure, real_approval
+print("ok: a sandbox approval in the editor doesn't carry over to full access")
+
+# The sidebar marks widgets whose commands aren't approved, and reviewing from there approves them.
+waiting = store.save_spec({**with_commands, "name": "Waiting", "width": 100, "height": 40})
+fine = store.save_spec({**with_commands, "name": "Fine", "width": 100, "height": 40}, approved=True)
+side = SimpleNamespace(listbox=Gtk.ListBox())
+for method in ("refresh_list", "review_commands", "set_enabled", "set_flag", "edit", "export", "delete_widget"):
+    setattr(side, method, getattr(app.MakerWindow, method).__get__(side))
+
+
+def review_buttons():
+    found = []
+
+    def walk(w):
+        if isinstance(w, Gtk.Button) and w.get_label() == "Review":
+            found.append(w)
+        if isinstance(w, Gtk.Container):
+            w.foreach(walk)
+    walk(side.listbox)
+    return found
+
+
+def unapproved():
+    return [m["id"] for m in store.list_widgets() if m.get("commands") and not store.is_approved(m)]
+
+
+side.refresh_list()
+others = len(unapproved()) - 1      # the examples above were saved unapproved
+assert waiting["id"] in unapproved() and fine["id"] not in unapproved()
+assert len(review_buttons()) == others + 1, "every unapproved widget, and only those, gets a Review button"
+app.approval_dialog = lambda *_a, **_kw: True
+side.review_commands(waiting["id"])
+assert store.is_approved(store.load(waiting["id"])) and len(review_buttons()) == others
+assert approvals.entries()[waiting["id"]]["source"] == "reviewed"
+app.approval_dialog = lambda *_a, **_kw: False
+side.review_commands(fine["id"])
+assert not store.is_approved(store.load(fine["id"])) and len(review_buttons()) == others + 1, "declining revokes"
+app.approval_dialog = real_approval
+for m in (waiting, fine):
+    store.delete(m["id"])
+print("ok: the widget list marks unapproved widgets and reviews them")
+
+# An expandable HTML draft gets the preview's Expanded switch; the page hears about it and its
+# own widget.toggle() flips the switch.
+exp_html = {"name": "EH", "engine": "html", "width": 120, "height": 60, "position": "center", "commands": {},
+            "expandable": {"width": 240, "height": 200},
+            "html": "<button id=b onclick='widget.toggle()'>t</button>"}
+pv_win = Gtk.Window()
+pv_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+pv_win.add(pv_box)
+pv = SimpleNamespace(
+    draft=exp_html, draft_approved=True, preview=None, preview_engine=None, preview_box=pv_box,
+    app=SimpleNamespace(cfg=config.load()), theme_tokens=_theme.default_tokens, selection=None, code_dirty=True,
+    preview_hint=Gtk.Label(), expand_switch=Gtk.CheckButton(label="Expanded"),
+    select_btn=SimpleNamespace(get_active=lambda: False), info=SimpleNamespace(set_text=lambda _t: None),
+    _sync_ui=lambda: None, _on_part_selected=None)
+pv_box.add(pv.expand_switch)
+for method in ("_drop_preview", "_preview_view", "_apply_preview_expanded", "_show_preview",
+               "_on_preview_expand_request"):
+    setattr(pv, method, getattr(app.MakerWindow, method).__get__(pv))
+pv.expand_switch.connect("toggled", lambda _b: pv._apply_preview_expanded())
+pv_win.show_all()
+pv._show_preview()
+assert pv.expand_switch.get_visible(), "an expandable HTML draft must offer the Expanded switch"
+wait(1500)
+pv.expand_switch.set_active(True)
+assert pv.preview.get_size_request() == (240, 200)
+wait(300)
+assert evaluate(pv.preview, "String(window.widget.expanded) + document.documentElement.dataset.pickitExpanded") \
+    == "truetrue"
+evaluate(pv.preview, "document.getElementById('b').click(); 1")
+wait(300)
+assert not pv.expand_switch.get_active() and pv.preview.get_size_request() == (120, 60), \
+    "the page's own toggle must work in the preview"
+pv.draft = {**exp_html, "expandable": None}
+pv._show_preview()
+assert not pv.expand_switch.get_visible()
+pv._drop_preview()
+pv_win.destroy()
+print("ok: HTML previews expand from the switch and from the page")
+
 from pickit import gallery  # noqa: E402
 from pickit.gallery_ui import GalleryWindow  # noqa: E402
 

@@ -10,6 +10,9 @@ set, when and from which Pickit version it was approved, and where the widget ca
 "runner" is how commands ran when they were approved (sandbox.py). An approval given while
 commands ran in the restricted sandbox doesn't carry over to full access: switching to it asks
 again. Switching to the sandbox keeps every approval, since commands then get less, not more.
+Internet commands in the sandbox normally get a network of their own (pasta); an approval given
+without pasta records that they share the host's network, and one given with it doesn't cover
+sharing, so removing pasta asks again instead of quietly widening what was approved.
 
 Copying or editing a widget's folder therefore never carries an approval along. This is a
 record of consent, not protection against software that already runs as you: such a program
@@ -79,18 +82,44 @@ def _editing():
         _write(data)
 
 
-def _runner(value):
+def _uses_network(commands) -> bool:
+    return any(isinstance(c, dict) and c.get("network") for c in (commands or {}).values())
+
+
+def _policy(runner, commands=None):
+    """sandbox.policy, except that sharing the host's network only matters to a command set
+    that uses the internet (`commands` unknown: assume it does)."""
     from . import sandbox
-    m = sandbox.mode(value)
-    return value if m == sandbox.CUSTOM else m
+    p = sandbox.policy(runner)
+    if p == sandbox.SHARED and commands is not None and not _uses_network(commands):
+        return sandbox.RESTRICTED
+    return p
 
 
-def covers(entry: dict, runner) -> bool:
-    """Whether an approval still holds with commands running through `runner`."""
+def covers(entry: dict, runner, commands=None) -> bool:
+    """Whether an approval still holds with commands running through `runner`. From least to
+    most access: the sandbox, the sandbox sharing the host's network, full access."""
     from . import sandbox
     approved_under = entry.get("runner", sandbox.HOST)  # earlier approvals: full access
-    current = _runner(runner)
-    return current == sandbox.RESTRICTED or current == approved_under
+    current = _policy(runner, commands)
+    if current == sandbox.RESTRICTED:
+        return True
+    if current == sandbox.SHARED:
+        return approved_under != sandbox.RESTRICTED
+    return current == approved_under
+
+
+def runner_now():
+    """How commands run right now, as an approval records it."""
+    from . import sandbox
+    return sandbox.policy(sandbox.current())
+
+
+def holds(approved_under, runner=None, commands=None) -> bool:
+    """Whether consent given while commands ran through `approved_under` still holds now (or
+    with `runner`). The editor and running widgets ask this, not only the saved record."""
+    from . import sandbox
+    return covers({"runner": approved_under}, sandbox.current() if runner is None else runner, commands)
 
 
 def is_approved(widget_id: str, commands: dict) -> bool:
@@ -98,7 +127,8 @@ def is_approved(widget_id: str, commands: dict) -> bool:
         return True
     from . import sandbox
     entry = _read()["widgets"].get(widget_id)
-    return bool(entry) and entry["hash"] == commands_hash(commands) and covers(entry, sandbox.current())
+    return bool(entry) and entry["hash"] == commands_hash(commands) and covers(
+        entry, sandbox.current(), commands)
 
 
 def approve(widget_id: str, name: str, commands: dict, source: str = "generated") -> None:
@@ -108,7 +138,7 @@ def approve(widget_id: str, name: str, commands: dict, source: str = "generated"
             "hash": commands_hash(commands), "name": name,
             "approved_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
             "pickit": __version__, "source": source if source in SOURCES else "generated",
-            "runner": _runner(sandbox.current())}
+            "runner": _policy(sandbox.current(), commands)}
 
 
 def revoke(widget_id: str) -> None:
@@ -126,18 +156,13 @@ def migrated() -> bool:
 
 
 def migrate(manifests: list[dict]) -> list[str]:
-    """Once: move approvals that Pickit 1.5.1 and earlier stored inside widget.json. Afterwards
-    an "approved_hash" in a widget file means nothing. Returns the ids it moved."""
-    moved = []
+    """Once: retire the approvals that Pickit 1.5.1 and earlier stored inside widget.json.
+
+    That field was an unkeyed hash of the widget's own commands, so anything able to write the
+    file could have written it too. It is therefore not taken as consent: those widgets wait
+    for a review (right-click → Review commands). Returns the ids that carried the old field."""
     with _editing() as data:
         if data.get("migrated"):
             return []
-        for m in manifests:
-            commands = m.get("commands") or {}
-            if commands and m.get("approved_hash") == commands_hash(commands):
-                data["widgets"].setdefault(m["id"], {
-                    "hash": commands_hash(commands), "name": m.get("name", m["id"]),
-                    "approved_at": "", "pickit": "1.5.1 or earlier", "source": "migrated"})
-                moved.append(m["id"])
         data["migrated"] = True
-    return moved
+    return [m["id"] for m in manifests if m.get("commands") and m.get("approved_hash")]
