@@ -54,6 +54,7 @@ def signature(manifest: dict) -> str:
     Includes whether its commands are approved, which lives outside the widget's files."""
     rest = {k: v for k, v in manifest.items() if k not in LIVE_FIELDS}
     rest["approved"] = is_approved(manifest)
+    rest["runner"] = approvals.runner_now()  # a widget reloads when how commands run changes
     h = hashlib.sha256(json.dumps(rest, sort_keys=True).encode())
     for path in (html_path(manifest["id"]), ui_path(manifest["id"])):
         try:
@@ -68,8 +69,9 @@ _migration_checked = False
 
 
 def _migrate_approvals() -> None:
-    """Once per install: approvals from widget.json (1.5.1 and earlier) move to approvals.py's
-    record, and the old field is removed. After that, widget files can't approve themselves."""
+    """Once per install: the approval field that 1.5.1 and earlier kept in widget.json is
+    removed. It is not taken as consent (anything that could write the file could forge it), so
+    those widgets need a review. Widget files can't approve themselves."""
     global _migration_checked
     if _migration_checked:
         return
